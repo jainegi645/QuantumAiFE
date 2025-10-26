@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 
 export const PublicHeader = () => {
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-50 w-full border-b bg-header-bg text-header-foreground">
       <div className="container flex h-16 items-center justify-between">
         {/* Logo */}
         <Link to="/" className="flex items-center space-x-2">
@@ -40,8 +40,8 @@ export const PublicHeader = () => {
               className="w-64 pl-9"
             />
           </div>
-          <Button variant="outline">Sign In</Button>
-          <Button>Get Started</Button>
+          <Button variant="outline" className="border-header-foreground text-header-foreground hover:bg-header-foreground/10">Sign In</Button>
+          <Button className="bg-header-button hover:bg-header-button/90">Get Started</Button>
         </div>
       </div>
     </header>

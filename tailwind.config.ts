@@ -63,6 +63,9 @@ export default {
         "blue-light": "hsl(var(--blue-light))",
         success: "hsl(var(--success))",
         warning: "hsl(var(--warning))",
+        "header-bg": "hsl(var(--header-bg))",
+        "header-foreground": "hsl(var(--header-foreground))",
+        "header-button": "hsl(var(--header-button))",
       },
       borderRadius: {
         lg: "var(--radius)",

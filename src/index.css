@@ -54,6 +54,11 @@ All colors MUST be HSL.
     --blue-light: 210 100% 96%;
     --success: 142 76% 36%;
     --warning: 38 92% 50%;
+    
+    /* Header tokens */
+    --header-bg: 208 100% 11%;
+    --header-foreground: 0 0% 100%;
+    --header-button: 217 91% 60%;
   }
 
   .dark {
