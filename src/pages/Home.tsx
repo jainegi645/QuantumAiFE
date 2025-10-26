@@ -1,3 +1,4 @@
+import React, { useEffect, useState } from 'react';
 import { PublicHeader } from "@/components/PublicHeader";
 import { Footer } from "@/components/Footer";
 import { CourseCard } from "@/components/CourseCard";
@@ -5,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Database, FlaskConical, LineChart, BookOpen, BrainCircuit } from "lucide-react";
 import { coursesData } from "@/data/courses";
+import { apiService } from '../api/apiCalling';
+import { endpoints } from '../api/endpoints';
 
 const categories = [
   { icon: Database, label: "Data Science" },
@@ -16,7 +19,50 @@ const categories = [
 
 const courses = Array(5).fill(coursesData[0]);
 
-export default function Home() {
+interface QuantumData {
+  // Define your data interface here
+  id: string;
+  name: string;
+  // ... other properties
+}
+
+const Home: React.FC = () => {
+  const [quantumData, setQuantumData] = useState<QuantumData[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchQuantumData();
+  }, []);
+
+  const fetchQuantumData = async () => {
+    try {
+      setLoading(true);
+      const data = await apiService.get(endpoints.getQuantumData);
+      setQuantumData(data);
+      setError(null);
+    } catch (err) {
+      setError('Failed to fetch quantum data');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmitAnalysis = async (analysisData: any) => {
+    try {
+      setLoading(true);
+      const response = await apiService.post(endpoints.postQuantumAnalysis, analysisData);
+      // Handle response
+      setError(null);
+    } catch (err) {
+      setError('Failed to submit analysis');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <PublicHeader />
@@ -149,4 +195,6 @@ export default function Home() {
       <Footer />
     </div>
   );
-}
+};
+
+export default Home;
