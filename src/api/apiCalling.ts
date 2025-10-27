@@ -1,46 +1,117 @@
-import axios from 'axios';
+import axios, { AxiosRequestConfig } from 'axios';
+import { endpoints } from './endpoints';
+import type { Endpoints } from './endpoints';
+
+const BASE_URL = (import.meta as any).env?.VITE_BACKEND_URL || 'http://localhost:8000';
 
 const API = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:8000',
+  baseURL: BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-export const apiService = {
-  get: async (endpoint: string) => {
-    try {
-      const response = await API.get(endpoint);
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  },
+type EndpointKey = keyof Endpoints | string | ((...args: any[]) => string);
 
-  post: async (endpoint: string, data: any) => {
-    try {
-      const response = await API.post(endpoint, data);
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  },
+function resolveEndpoint(e: EndpointKey, args: any[] = []): string {
+  // If a raw string URL is provided, use it as-is
+  if (typeof e === 'string') return e;
 
-  put: async (endpoint: string, data: any) => {
-    try {
-      const response = await API.put(endpoint, data);
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  },
+  // If a function was passed directly, call it with args
+  if (typeof e === 'function') return e(...args);
 
-  delete: async (endpoint: string) => {
-    try {
-      const response = await API.delete(endpoint);
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
+  // Otherwise it's a key of the endpoints object — lookup and resolve
+  const value = (endpoints as any)[e as keyof Endpoints];
+  if (typeof value === 'function') return value(...args);
+  return String(value);
+}
+
+export type ApiError = {
+  message: string;
+  status?: number;
+  data?: any;
+  endpoint?: string;
+  original?: any;
+};
+
+function toApiError(err: any, endpoint?: string): ApiError {
+  if (axios.isAxiosError(err)) {
+    return {
+      message: err.message || 'Request failed',
+      status: err.response?.status,
+      data: err.response?.data,
+      endpoint,
+      original: err,
+    };
   }
+
+  return {
+    message: err?.message ? String(err.message) : String(err ?? 'Unknown error'),
+    endpoint,
+    original: err,
+  };
+}
+
+export const apiService = {
+  get: async <T = any>(
+    endpoint: EndpointKey,
+    params?: Record<string, any> | null,
+    args: any[] = [],
+    config?: AxiosRequestConfig,
+  ): Promise<T> => {
+    try {
+      const url = resolveEndpoint(endpoint, args);
+      const response = await API.get<T>(url, { params, ...config });
+      return response.data;
+    } catch (error) {
+      const url = resolveEndpoint(endpoint, args);
+      throw toApiError(error, url);
+    }
+  },
+
+  post: async <T = any, B = any>(
+    endpoint: EndpointKey,
+    body?: B,
+    args: any[] = [],
+    config?: AxiosRequestConfig,
+  ): Promise<T> => {
+    try {
+      const url = resolveEndpoint(endpoint, args);
+      const response = await API.post<T>(url, body, config);
+      return response.data;
+    } catch (error) {
+      const url = resolveEndpoint(endpoint, args);
+      throw toApiError(error, url);
+    }
+  },
+
+  put: async <T = any, B = any>(
+    endpoint: EndpointKey,
+    body?: B,
+    args: any[] = [],
+    config?: AxiosRequestConfig,
+  ): Promise<T> => {
+    try {
+      const url = resolveEndpoint(endpoint, args);
+      const response = await API.put<T>(url, body, config);
+      return response.data;
+    } catch (error) {
+      const url = resolveEndpoint(endpoint, args);
+      throw toApiError(error, url);
+    }
+  },
+
+  delete: async <T = any>(endpoint: EndpointKey, args: any[] = [], config?: AxiosRequestConfig): Promise<T> => {
+    try {
+      const url = resolveEndpoint(endpoint, args);
+      const response = await API.delete<T>(url, config);
+      return response.data;
+    } catch (error) {
+      const url = resolveEndpoint(endpoint, args);
+      throw toApiError(error, url);
+    }
+  },
+
+  // Helper to build a full URL string without making a request
+  buildUrl: (endpoint: EndpointKey, args: any[] = []) => resolveEndpoint(endpoint, args),
 };
