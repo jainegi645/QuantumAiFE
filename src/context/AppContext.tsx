@@ -2,8 +2,8 @@ import axios from "axios";
 import React, { createContext, useEffect, useState, ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import { useAuth, useUser } from "@clerk/clerk-react";
 import humanizeDuration from "humanize-duration";
+import { authService } from "@/services/auth.service";
 
 // Small domain typings — keep these minimal and extend as your app grows
 type Lecture = {
@@ -23,14 +23,16 @@ type Course = {
 };
 
 interface AppContextType {
-  showLogin: boolean;
-  setShowLogin: (v: boolean) => void;
+  isAuthenticated: boolean;
+  user: any;
+  hasRole?: (roles: string | string[]) => boolean;
+  login: (provider: string) => Promise<void>;
+  logout: () => void;
   backendUrl: string;
   currency: string;
   navigate: ReturnType<typeof useNavigate>;
   userData: any;
   setUserData: (d: any) => void;
-  getToken: (() => Promise<string>) | null;
   allCourses: Course[];
   fetchAllCourses: () => Promise<void>;
   enrolledCourses: any[];
@@ -51,12 +53,10 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({
   // environment values — assert string availability
   const backendUrl = (import.meta as any).env.VITE_BACKEND_URL as string;
   const currency = (import.meta as any).env.VITE_CURRENCY as string;
-
   const navigate = useNavigate();
-  const { getToken } = useAuth();
-  const { user } = useUser();
 
-  const [showLogin, setShowLogin] = useState<boolean>(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(authService.isAuthenticated());
+  const [user, setUser] = useState(authService.getUser());
   const [isEducator, setIsEducator] = useState<boolean>(false);
   const [allCourses, setAllCourses] = useState<Course[]>([]);
   const [userData, setUserData] = useState<any>(null);
@@ -77,21 +77,50 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({
     }
   };
 
+  // Initialize auth interceptor
+  useEffect(() => {
+    authService.setupAxiosInterceptor();
+  }, []);
+
+  // Keep local state in sync when auth changes elsewhere (login/logout)
+  useEffect(() => {
+    const onAuthChanged = () => {
+      setIsAuthenticated(authService.isAuthenticated());
+      setUser(authService.getUser());
+    };
+    window.addEventListener('auth:changed', onAuthChanged);
+    return () => window.removeEventListener('auth:changed', onAuthChanged);
+  }, []);
+
+  // Auth methods
+  const login = async (provider: string) => {
+    await authService.login(provider);
+  };
+
+  const logout = () => {
+    authService.logout();
+    setIsAuthenticated(false);
+    setUser(null);
+    setUserData(null);
+    setEnrolledCourses([]);
+    setIsEducator(false);
+  };
+
+  const hasRole = (roles: string | string[]) => {
+    if (!user) return false;
+    const arr = Array.isArray(roles) ? roles : [roles];
+    return !!user?.role && arr.includes(user.role);
+  };
+
   // Fetch UserData
   const fetchUserData = async () => {
     try {
-      if (user && (user as any).publicMetadata?.role === "educator") {
-        setIsEducator(true);
-      }
+      if (!isAuthenticated) return;
 
-      const token = getToken ? await getToken() : null;
-
-      const { data } = await axios.get(backendUrl + "/api/user/data", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
+      const { data } = await axios.get(backendUrl + "/api/user/data");
       if (data.success) {
         setUserData(data.user);
+        setIsEducator(data.user.role === "educator");
       } else {
         toast.error(data.message);
       }
@@ -159,26 +188,26 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({
 
   useEffect(() => {
     fetchAllCourses();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    if (user) {
+    if (isAuthenticated) {
       fetchUserData();
       fetchUserEnrolledCourses();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [isAuthenticated]);
 
   const value: AppContextType = {
-    showLogin,
-    setShowLogin,
+    isAuthenticated,
+    user,
+    hasRole,
+    login,
+    logout,
     backendUrl,
     currency,
     navigate,
     userData,
     setUserData,
-    getToken: getToken ?? null,
     allCourses,
     fetchAllCourses,
     enrolledCourses,
