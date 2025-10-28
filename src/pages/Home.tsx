@@ -79,7 +79,7 @@ const Home: React.FC = () => {
           </p>
           <div className="flex gap-4 justify-center">
             <Button size="lg">Get Started</Button>
-            <Button size="lg" variant="outline">I'm Here</Button>
+            {/* <Button size="lg" variant="outline">I'm Here</Button> */}
           </div>
         </div>
       </section>

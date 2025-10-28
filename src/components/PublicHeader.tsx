@@ -17,12 +17,15 @@ export const PublicHeader = () => {
 
         {/* Navigation */}
         <nav className="hidden md:flex items-center space-x-6 text-sm font-medium">
+          {/* Link this to Learn page instead of home */}
           <Link to="/" className="transition-colors hover:text-accent">
             Learn
           </Link>
           <Link to="/courses" className="transition-colors hover:text-accent">
+          {/* <Link to="/catalog" className="transition-colors hover:text-accent"> */}
             Catalogue
           </Link>
+          {/* Add Links of all these pages */}
           <span className="transition-colors hover:text-accent cursor-pointer">Individuals</span>
           <span className="transition-colors hover:text-accent cursor-pointer">Business</span>
           <span className="transition-colors hover:text-accent cursor-pointer">Government</span>
@@ -40,8 +43,8 @@ export const PublicHeader = () => {
               className="w-64 pl-9"
             />
           </div>
-          <Button variant="outline" className="border-header-foreground text-header-foreground hover:bg-header-foreground/10">Sign In</Button>
-          <Button className="bg-header-button hover:bg-header-button/90">Get Started</Button>
+          <Button className="bg-header-button/10 text-header hover:bg-header-button/10">Log In</Button>
+          <Button className="bg-header-button hover:bg-header-button/90">Join for Free</Button>
         </div>
       </div>
     </header>
