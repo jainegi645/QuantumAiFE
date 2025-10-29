@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { toast } from "react-toastify";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useToast } from "@/components/ui/use-toast";
 import { useContext, useEffect } from "react";
 import { AppContext } from "@/context/AppContext";
-import axios from "axios";
+import { apiService } from "@/api/apiCalling";
+import { endpoints } from "@/api/endpoints";
+import { authService } from "@/services/auth.service";
 import { useSearchParams } from "react-router-dom";
 
 export default function Auth() {
@@ -16,6 +18,7 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const context = useContext(AppContext);
+  const { toast } = useToast();
 
   // Login form state
   const [loginEmail, setLoginEmail] = useState("");
@@ -32,21 +35,86 @@ export default function Auth() {
     setLoading(true);
 
     try {
-      const response = await axios.post(`${context?.backendUrl}/api/auth/login`, {
+      // If we already have a token (e.g. obtained from an OAuth flow), include it
+      const existingToken = authService.getToken();
+      const config: any = {};
+      if (existingToken) {
+        config.headers = { Authorization: `Bearer ${existingToken}` };
+      }
+
+      const response = await apiService.post<any>(endpoints.login, {
         email: loginEmail,
         password: loginPassword,
-      });
+      }, [], config);
 
-      if (response.data.success) {
-        // Update auth context with user data
+      console.log('Login response:', response); // Debug log
+
+      if (response?.token) {
+        const token = response.token;
+        
+        // Parse the user data from the response
+        let userData = null;
+        if (response.user) {
+          // Check if response.user is a string containing "UserDto(...)"
+          if (typeof response.user === 'string' && response.user.includes('UserDto(')) {
+            // Parse the UserDto string format
+            const matches = response.user.match(/UserDto\(id=(.*?), name=(.*?), email=(.*?), role=(.*?), verified=(.*?)\)/);
+            if (matches) {
+              userData = {
+                id: matches[1],
+                name: matches[2],
+                email: matches[3],
+                role: matches[4],
+                verified: matches[5] === 'true'
+              };
+            }
+          } else {
+            // If it's already an object, use it directly
+            userData = response.user;
+          }
+        }
+
+        // If we don't have user data yet, try to get it from /api/users/me
+        if (!userData?.id) {
+          try {
+            const meResp = await apiService.get<any>(endpoints.me, null, [], { headers: { Authorization: `Bearer ${token}` } });
+            userData = meResp?.user ?? meResp;
+          } catch (meErr) {
+            console.warn('Failed to fetch user data from /me endpoint:', meErr);
+          }
+        }
+
+        // Store the user data and token
+        if (userData?.id) {
+          await authService.applyAuth(token, userData);
+        } else {
+          // Fallback: store at least the role if no full user data
+          await authService.applyAuth(token, { role: response.role });
+        }
+
+        // Update app context and navigate
         await context?.fetchUserData();
-        toast.success("Logged in successfully!");
+        
+        toast({
+          title: "Success",
+          description: "Logged in successfully!"
+        });
         navigate("/dashboard");
       } else {
-        toast.error(response.data.message || "Login failed");
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: response?.error || "Login failed"
+        });
       }
     } catch (error: any) {
-      toast.error(error.response?.data?.message || "Login failed");
+      console.error('Login error:', error);
+      const errorMessage = error?.data?.error || error?.message || "Login failed";
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      });
     } finally {
       setLoading(false);
     }
@@ -55,25 +123,36 @@ export default function Auth() {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-
+    
     try {
-      const response = await axios.post(`${context?.backendUrl}/api/auth/register`, {
-        firstName,
-        lastName,
+      const payload = {
+        name: `${firstName} ${lastName}`.trim(),
         email: registerEmail,
         password: registerPassword,
-      });
+      };
 
-      if (response.data.success) {
-        toast.success("Registration successful! Please log in.");
-        setActiveTab("login");
-        // Pre-fill login email
-        setLoginEmail(registerEmail);
-      } else {
-        toast.error(response.data.message || "Registration failed");
-      }
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || "Registration failed");
+      await apiService.post<any>(endpoints.register, payload);
+      
+      // Registration successful (201 Created) - show message and switch to login
+      toast({
+        title: "Success",
+        description: "Registration successful! Please log in to continue."
+      });
+      setActiveTab("login");
+      // Pre-fill login email for convenience
+      setLoginEmail(registerEmail);
+    } catch (err: any) {
+      console.error('Register error', err);
+      // Handle specific error cases from backend
+      const errorMessage = err?.data?.error === "Email already exists" 
+        ? "This email is already registered. Please log in or use a different email."
+        : err?.data?.error || "Registration failed. Please try again.";
+      
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage
+      });
     } finally {
       setLoading(false);
     }

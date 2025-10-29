@@ -2,7 +2,8 @@ import axios, { AxiosRequestConfig } from 'axios';
 import { endpoints } from './endpoints';
 import type { Endpoints } from './endpoints';
 
-const BASE_URL = (import.meta as any).env?.VITE_BACKEND_URL || 'http://localhost:8000';
+// Use VITE_BACKEND_URL when provided; default to port 8081 where the backend listens
+const BASE_URL = (import.meta as any).env?.VITE_BACKEND_URL || 'http://localhost:8081';
 
 const API = axios.create({
   baseURL: BASE_URL,

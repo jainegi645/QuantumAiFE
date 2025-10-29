@@ -12,17 +12,30 @@ export interface LoginResponse {
   };
 }
 
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+  [key: string]: any;
+}
+
 class AuthService {
   private static instance: AuthService;
   private token: string | null = null;
-  private user: any = null;
+  private user: User | null = null;
 
   private constructor() {
-    // Load token from localStorage on initialization
+    // Load token and user from localStorage on initialization
     this.token = localStorage.getItem('token');
     const userStr = localStorage.getItem('user');
     if (userStr) {
-      this.user = JSON.parse(userStr);
+      try {
+        this.user = JSON.parse(userStr);
+      } catch (e) {
+        console.error('Failed to parse stored user:', e);
+        this.user = null;
+      }
     }
   }
 
@@ -72,6 +85,15 @@ class AuthService {
     localStorage.setItem('user', JSON.stringify(user));
     // notify app about auth change
     try { window.dispatchEvent(new CustomEvent('auth:changed')); } catch (e) {}
+  }
+
+  /**
+   * Apply token and user programmatically (e.g. after credential login)
+   * This is public so frontend code can set auth after calling /login or /register
+   */
+  async applyAuth(token: string, user: any): Promise<void> {
+    this.setToken(token);
+    this.setUser(user);
   }
 
   setupAxiosInterceptor(): void {

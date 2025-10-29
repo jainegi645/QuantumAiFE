@@ -33,6 +33,7 @@ interface AppContextType {
   navigate: ReturnType<typeof useNavigate>;
   userData: any;
   setUserData: (d: any) => void;
+  fetchUserData: () => Promise<void>;
   allCourses: Course[];
   fetchAllCourses: () => Promise<void>;
   enrolledCourses: any[];
@@ -116,8 +117,15 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({
   const fetchUserData = async () => {
     try {
       if (!isAuthenticated) return;
+      
+      // Get the current user's ID from authService
+      const currentUser = authService.getUser();
+      if (!currentUser?.id) {
+        console.error('No user ID available');
+        return;
+      }
 
-      const { data } = await axios.get(backendUrl + "/api/user/data");
+      const { data } = await axios.get(backendUrl + `/api/users/${currentUser.id}`);
       if (data.success) {
         setUserData(data.user);
         setIsEducator(data.user.role === "educator");
@@ -212,6 +220,7 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({
     fetchAllCourses,
     enrolledCourses,
     fetchUserEnrolledCourses,
+    fetchUserData,
     calculateChapterTime,
     calculateCourseDuration,
     calculateRating,

@@ -6,6 +6,8 @@ export const endpoints = {
 
   // Users
   users: '/api/users',
+  // Currently authenticated user
+  me: '/api/users/me',
   user: (id: string) => `/api/users/${id}`,
 
   // Courses

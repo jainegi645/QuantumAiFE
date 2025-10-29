@@ -14,7 +14,7 @@ export const PublicHeader = () => {
   const ddRef = useRef<HTMLDivElement | null>(null);
 
   const userInitial = user?.name ? user.name.split(" ").map((n: string) => n[0]).slice(0,2).join("") : 'G';
-
+  console.log('PublicHeader user:', user);
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
       if (ddRef.current && !ddRef.current.contains(e.target as Node)) {
@@ -73,16 +73,18 @@ export const PublicHeader = () => {
                   )}
                 </div>
                 <div className="hidden md:block text-sm">
-                  <div className="font-medium">{user?.name ?? 'User'}</div>
-                  <div className="text-xs text-muted-foreground">{user?.role ?? ''}</div>
+                  <div className="font-medium">{user?.name ?? 'Guest'}</div>
+                  {/* <div className="text-xs text-muted-foreground">{user?.role ?? ''}</div> */}
                 </div>
               </button>
 
               {showProfile && (
-                <div className="absolute right-0 mt-2 w-40 bg-white border rounded shadow-md z-50">
-                  <Link to="/profile" className="block px-3 py-2 hover:bg-gray-50">Profile</Link>
-                  <Link to="/settings" className="block px-3 py-2 hover:bg-gray-50">Settings</Link>
-                  <button onClick={() => context.logout()} className="w-full text-left px-3 py-2 hover:bg-gray-50">Logout</button>
+                <div className="absolute right-0 mt-2 w-40 bg-primary/95 border rounded shadow-md z-50">
+                  <Link to="/dashboard" className="block px-3 py-2 hover:bg-primary/20">Dashboard</Link>
+                  <Link to="/profile" className="block px-3 py-2 hover:bg-primary/20">Profile</Link>
+                  {/* <Link to="/profile" className="block px-3 py-2 text-header-foreground-10 hover:bg-header-button/10">Profile</Link> */}
+                  <Link to="/settings" className="block px-3 py-2 hover:bg-primary/20">Settings</Link>
+                  <button onClick={() => context.logout()} className="w-full text-left px-3 py-2 hover:bg-primary/20">Logout</button>
                 </div>
               )}
             </div>
