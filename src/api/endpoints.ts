@@ -13,6 +13,10 @@ export const endpoints = {
   // Courses
   courses: '/api/courses',
   course: (id: string) => `/api/courses/${id}`,
+  // Top new paid courses (default limit 5)
+  topNewPaid: '/api/courses/top-new-paid',
+  topNewFree: '/api/courses/top-free',
+  mostPopular: '/api/courses/top-paid-popular',
 
   // Course progress
   courseProgress: '/api/course-progress',
@@ -52,6 +56,10 @@ export const endpoints = {
 
   // Leaderboards
   leaderboardsTopScores: '/api/leaderboards/top-scores',
+
+  // Quantum data endpoints (used by home page)
+  getQuantumData: '/api/quantum/data',
+  postQuantumAnalysis: '/api/quantum/analysis',
 
   // Badges
   badges: '/api/badges',

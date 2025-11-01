@@ -34,7 +34,7 @@ const App = () => (
             <Route path="/unauthorized" element={<Unauthorized />} />
             <Route path="/courses/:id" element={<CourseDetail />} />
             <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/add-courses" element={<AddCourse />} />
+            <Route path="/add-course" element={<AddCourse />} />
             <Route path="/my-courses" element={<MyCourses />} />
             <Route path="/students" element={<Students />} />
             {/* <Route path="/dashboard" element={<ProtectedRoute allowedRoles={["educator"]}><Dashboard /></ProtectedRoute>} /> */}

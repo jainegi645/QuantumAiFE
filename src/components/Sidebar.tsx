@@ -4,11 +4,17 @@ import { cn } from "@/lib/utils";
 import { useContext } from "react";
 import { AppContext } from "@/context/AppContext";
 
+// const navigation = [
+//   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, roles: ["educator"] },
+//   { name: "Add Course", href: "/add-course", icon: Plus, roles: ["educator"] },
+//   { name: "My Courses", href: "/my-courses", icon: BookOpen, roles: ["educator"] },
+//   { name: "Student Enrolled", href: "/students", icon: Users, roles: ["educator"] },
+// ];
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Add Course", href: "/add-course", icon: Plus, roles: ["educator"] },
-  { name: "My Courses", href: "/my-courses", icon: BookOpen, roles: ["educator"] },
-  { name: "Student Enrolled", href: "/students", icon: Users, roles: ["educator"] },
+  { name: "Add Course", href: "/add-course", icon: Plus },
+  { name: "My Courses", href: "/my-courses", icon: BookOpen },
+  { name: "Student Enrolled", href: "/students", icon: Users },
 ];
 
 type SidebarProps = {
@@ -25,7 +31,7 @@ export const Sidebar = ({ mobile = false, onClose }: SidebarProps) => {
       className={cn(
         mobile
           ? "fixed inset-0 z-50 bg-sidebar p-4 md:hidden"
-          : "hidden md:fixed md:left-0 md:top-0 md:z-40 md:h-screen md:w-64 md:bg-sidebar md:border-r md:border-sidebar-border",
+          : "hidden md:block md:fixed md:left-0 md:top-0 md:z-40 md:h-screen md:w-64 md:bg-sidebar md:border-r md:border-sidebar-border",
       )}
     >
       <div className={cn("flex h-full flex-col", mobile ? "max-w-sm w-full mx-auto" : "")}>
@@ -83,7 +89,7 @@ export const Sidebar = ({ mobile = false, onClose }: SidebarProps) => {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-sidebar-foreground truncate">Hi! {context?.user?.name ?? 'Guest'}</p>
-              <p className="text-xs text-sidebar-foreground/60">{context?.user?.role ?? 'Visitor'}</p>
+              {/* <p className="text-xs text-sidebar-foreground/60">{context?.user?.role ?? 'Visitor'}</p> */}
             </div>
           </div>
         </div>

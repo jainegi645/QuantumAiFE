@@ -30,15 +30,25 @@ const Home: React.FC = () => {
   const [quantumData, setQuantumData] = useState<QuantumData[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [topNewCourses, setTopNewCourses] = useState<any[]>([]);
+  const [topCoursesLoading, setTopCoursesLoading] = useState<boolean>(false);
+  const [topPopularCourses, setTopPopularCourses] = useState<any[]>([]);
+  const [topPopularLoading, setTopPopularLoading] = useState<boolean>(false);
+  const [topFreeCourses, setTopFreeCourses] = useState<any[]>([]);
+  const [topFreeLoading, setTopFreeLoading] = useState<boolean>(false);
 
   useEffect(() => {
     fetchQuantumData();
+    fetchTopNewPaid();
+    fetchTopPopular();
+    fetchTopFree();
   }, []);
 
   const fetchQuantumData = async () => {
     try {
       setLoading(true);
-      const data = await apiService.get(endpoints.getQuantumData);
+      // Use endpoints when available
+      const data = await apiService.get<any>(endpoints.getQuantumData ?? '/api/quantum/data');
       setQuantumData(data);
       setError(null);
     } catch (err) {
@@ -52,7 +62,7 @@ const Home: React.FC = () => {
   const handleSubmitAnalysis = async (analysisData: any) => {
     try {
       setLoading(true);
-      const response = await apiService.post(endpoints.postQuantumAnalysis, analysisData);
+      const response = await apiService.post<any>(endpoints.postQuantumAnalysis ?? '/api/quantum/analysis', analysisData);
       // Handle response
       setError(null);
     } catch (err) {
@@ -60,6 +70,83 @@ const Home: React.FC = () => {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchTopNewPaid = async () => {
+    setTopCoursesLoading(true);
+    try {
+      // Backend GET /top-new-paid returns a list of Course objects (limit default 5)
+      const data = await apiService.get<any>(endpoints.topNewPaid ?? '/api/courses/top-new-paid', { limit: 5 });
+      console.debug('fetchTopNewPaid response:', data);
+
+      // Handle several possible response shapes from backend
+      if (Array.isArray(data)) {
+        setTopNewCourses(data);
+      } else if (data && Array.isArray((data as any).courses)) {
+        setTopNewCourses((data as any).courses);
+      } else if (data && Array.isArray((data as any).data)) {
+        setTopNewCourses((data as any).data);
+      } else if (data && Array.isArray((data as any).topNewPaid)) {
+        setTopNewCourses((data as any).topNewPaid);
+      } else if (data && Array.isArray((data as any).result)) {
+        setTopNewCourses((data as any).result);
+      } else {
+        // Last resort: try to find any array value on the object
+        const arrVal = Object.values(data || {}).find((v) => Array.isArray(v));
+        if (Array.isArray(arrVal)) setTopNewCourses(arrVal as any[]);
+        else setTopNewCourses([]);
+      }
+    } catch (err) {
+      console.error('Failed to fetch top new paid courses', err);
+      setTopNewCourses([]);
+    } finally {
+      setTopCoursesLoading(false);
+    }
+  };
+
+  const fetchTopPopular = async () => {
+    setTopPopularLoading(true);
+    try {
+      const data = await apiService.get<any>(endpoints.mostPopular ?? '/api/courses/top-paid-popular', { limit: 5 });
+      console.debug('fetchTopPopular response:', data);
+      if (Array.isArray(data)) setTopPopularCourses(data);
+      else if (data && Array.isArray((data as any).courses)) setTopPopularCourses((data as any).courses);
+      else if (data && Array.isArray((data as any).data)) setTopPopularCourses((data as any).data);
+      else if (data && Array.isArray((data as any).result)) setTopPopularCourses((data as any).result);
+      else {
+        const arrVal = Object.values(data || {}).find((v) => Array.isArray(v));
+        if (Array.isArray(arrVal)) setTopPopularCourses(arrVal as any[]);
+        else setTopPopularCourses([]);
+      }
+    } catch (err) {
+      console.error('Failed to fetch top popular courses', err);
+      setTopPopularCourses([]);
+    } finally {
+      setTopPopularLoading(false);
+    }
+  };
+
+  const fetchTopFree = async () => {
+    setTopFreeLoading(true);
+    try {
+      const data = await apiService.get<any>(endpoints.topNewFree ?? '/api/courses/top-free', { limit: 5 });
+      console.log("In top free .... 1")
+      console.debug('fetchTopFree response:', data);
+      if (Array.isArray(data)) setTopFreeCourses(data);
+      else if (data && Array.isArray((data as any).courses)) setTopFreeCourses((data as any).courses);
+      else if (data && Array.isArray((data as any).data)) setTopFreeCourses((data as any).data);
+      else if (data && Array.isArray((data as any).result)) setTopFreeCourses((data as any).result);
+      else {
+        const arrVal = Object.values(data || {}).find((v) => Array.isArray(v));
+        if (Array.isArray(arrVal)) setTopFreeCourses(arrVal as any[]);
+        else setTopFreeCourses([]);
+      }
+    } catch (err) {
+      console.error('Failed to fetch top free courses', err);
+      setTopFreeCourses([]);
+    } finally {
+      setTopFreeLoading(false);
     }
   };
 
@@ -127,9 +214,44 @@ const Home: React.FC = () => {
         <div className="container">
           <h2 className="text-3xl font-bold mb-8">Newly Released Courses</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
-            {courses.map((course, idx) => (
-              <CourseCard key={idx} {...course} />
-            ))}
+            {(topCoursesLoading || loading) && topNewCourses.length === 0 ? (
+              // Simple loading skeletons (5 columns)
+              Array.from({ length: 5 }).map((_, i) => (
+                <div key={`skeleton-${i}`} className="rounded-lg bg-white border p-4 animate-pulse">
+                  <div className="aspect-video bg-gray-200 mb-4" />
+                  <div className="h-4 bg-gray-200 rounded mb-2 w-3/4" />
+                  <div className="h-3 bg-gray-200 rounded w-1/2" />
+                </div>
+              ))
+            ) : topNewCourses && topNewCourses.length > 0 ? (
+              topNewCourses.map((course: any, idx: number) => {
+                const rawId = course.id || course._id || course.courseId || null;
+                const keyId = `${rawId ?? 'course'}-${idx}`;
+                const title = course.title || course.courseTitle || course.name || 'Untitled Course';
+                const image = course.image || course.imageUrl || '/placeholder.svg';
+                const duration = course.duration || course.totalDuration || '0 Hours';
+                const level = course.level || course.difficulty || 'All Levels';
+                const price = course.price
+                  ? (typeof course.price === 'number' ? `$${course.price}` : course.price)
+                  : (course.coursePrice ? (typeof course.coursePrice === 'number' ? `$${course.coursePrice}` : String(course.coursePrice)) : undefined);
+
+                const idProp = rawId ?? String(idx);
+
+                return (
+                  <CourseCard
+                    key={keyId}
+                    id={idProp}
+                    title={title}
+                    image={image}
+                    duration={duration}
+                    level={level}
+                    price={price}
+                  />
+                );
+              })
+            ) : (
+              <div className="col-span-full text-center text-muted-foreground">No newly released courses found.</div>
+            )}
           </div>
         </div>
       </section>
@@ -139,9 +261,85 @@ const Home: React.FC = () => {
         <div className="container">
           <h2 className="text-3xl font-bold mb-8">Most Popular Courses</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
-            {courses.map((course, idx) => (
-              <CourseCard key={idx} {...course} />
-            ))}
+            {(topPopularLoading || loading) && topPopularCourses.length === 0 ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <div key={`pop-skel-${i}`} className="rounded-lg bg-white border p-4 animate-pulse">
+                  <div className="aspect-video bg-gray-200 mb-4" />
+                  <div className="h-4 bg-gray-200 rounded mb-2 w-3/4" />
+                  <div className="h-3 bg-gray-200 rounded w-1/2" />
+                </div>
+              ))
+            ) : topPopularCourses && topPopularCourses.length > 0 ? (
+              topPopularCourses.map((course: any, idx: number) => {
+                const rawId = course.id || course._id || course.courseId || null;
+                const keyId = `${rawId ?? 'course'}-${idx}`;
+                const title = course.title || course.courseTitle || course.name || 'Untitled Course';
+                const image = course.image || course.imageUrl || '/placeholder.svg';
+                const duration = course.duration || course.totalDuration || '0 Hours';
+                const level = course.level || course.difficulty || 'All Levels';
+                const price = course.price
+                  ? (typeof course.price === 'number' ? `$${course.price}` : course.price)
+                  : (course.coursePrice ? (typeof course.coursePrice === 'number' ? `$${course.coursePrice}` : String(course.coursePrice)) : undefined);
+                const idProp = rawId ?? String(idx);
+                return (
+                  <CourseCard
+                    key={keyId}
+                    id={idProp}
+                    title={title}
+                    image={image}
+                    duration={duration}
+                    level={level}
+                    price={price}
+                  />
+                );
+              })
+            ) : (
+              <div className="col-span-full text-center text-muted-foreground">No popular courses found.</div>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* Top Free Courses */}
+      <section className="py-16 bg-secondary">
+        <div className="container">
+          <h2 className="text-3xl font-bold mb-8">Top Free Courses</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
+            {(topFreeLoading || loading) && topFreeCourses.length === 0 ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <div key={`free-skel-${i}`} className="rounded-lg bg-white border p-4 animate-pulse">
+                  <div className="aspect-video bg-gray-200 mb-4" />
+                  <div className="h-4 bg-gray-200 rounded mb-2 w-3/4" />
+                  <div className="h-3 bg-gray-200 rounded w-1/2" />
+                </div>
+              ))
+            ) : topFreeCourses && topFreeCourses.length > 0 ? (
+              topFreeCourses.map((course: any, idx: number) => {
+                const rawId = course.id || course._id || course.courseId || null;
+                const keyId = `${rawId ?? 'course'}-${idx}`;
+                const title = course.title || course.courseTitle || course.name || 'Untitled Course';
+                const image = course.image || course.imageUrl || '/placeholder.svg';
+                const duration = course.duration || course.totalDuration || '0 Hours';
+                const level = course.level || course.difficulty || 'All Levels';
+                const price = course.price
+                  ? (typeof course.price === 'number' ? `$${course.price}` : course.price)
+                  : (course.coursePrice ? (typeof course.coursePrice === 'number' ? `$${course.coursePrice}` : String(course.coursePrice)) : undefined);
+                const idProp = rawId ?? String(idx);
+                return (
+                  <CourseCard
+                    key={keyId}
+                    id={idProp}
+                    title={title}
+                    image={image}
+                    duration={duration}
+                    level={level}
+                    price={price}
+                  />
+                );
+              })
+            ) : (
+              <div className="col-span-full text-center text-muted-foreground">No free courses found.</div>
+            )}
           </div>
         </div>
       </section>

@@ -35,6 +35,7 @@ const AddCourse = () => {
     notesTitle: '',
     attachment: null,
   });
+  const [submitting, setSubmitting] = useState(false);
 
   const handleChapter = (action: 'add' | 'remove' | 'toggle', chapterId?: string) => {
     if (action === 'add') {
@@ -138,52 +139,94 @@ const AddCourse = () => {
   };
 
   const handleSubmit = async (e) => {
+    e.preventDefault();
+    console.log('AddCourse: handleSubmit called');
+    setSubmitting(true);
+    console.log('AddCourse: handleSubmit called 2');
+
+    // ensure description is available in finally block as well
+    let description = courseDescription;
+
     try {
-
-      e.preventDefault();
-
       if (!image) {
-        toast.error('Thumbnail Not Selected')
+        toast.error('Thumbnail Not Selected');
+        console.log('AddCourse: handleSubmit called 3 - no image');
+        setSubmitting(false);
+        return;
       }
 
+      description = quillRef?.current?.root?.innerHTML ?? courseDescription;
+      console.log('AddCourse: handleSubmit called 3 b - description prepared');
       const courseData = {
         courseTitle,
-        courseDescription: quillRef.current.root.innerHTML,
+        courseDescription: description,
         coursePrice: Number(coursePrice),
         discount: Number(discount),
         courseContent: chapters,
+      };
+
+      const formData = new FormData();
+      formData.append('courseData', JSON.stringify(courseData));
+      console.log('AddCourse: handleSubmit called 4 - courseData appended');
+      formData.append('image', image);
+      console.log('AddCourse: handleSubmit called 5 - formData prepared');
+
+      const token = getToken ? await getToken() : null;
+      console.log('AddCourse: posting to', backendUrl + '/api/courses', { token });
+
+      const { data } = await axios.post(backendUrl + '/api/courses', formData, {
+        headers: { Authorization: token ? `Bearer ${token}` : '' },
+      });
+
+      console.log('AddCourse: response', data);
+
+      if (data?.success) {
+        toast.success(data.message || 'Course added');
+        // Clear form
+        setCourseTitle('');
+        setCoursePrice(0);
+        setDiscount(0);
+        setImage(null);
+        setChapters([]);
+        if (quillRef?.current?.root) quillRef.current.root.innerHTML = '';
+        // Refresh page to show new data
+        window.location.reload();
+      } else {
+        toast.error(data?.message || 'Failed to add course');
       }
+    } catch (error: any) {
+      console.error('AddCourse: submit error', error);
+      const msg = error?.response?.data?.message || error?.message || 'Submission failed';
+      toast.error(msg);
+    } finally {
+        // Backend Course model expects imageUrl as a string. Many backends
+        // don't accept multipart here (415). Send JSON with imageUrl (empty
+        // or pre-uploaded URL) unless you have a dedicated upload endpoint.
+        const token = getToken ? await getToken() : null;
+        console.log('AddCourse: posting JSON to', backendUrl + '/api/courses', { token });
 
-      const formData = new FormData()
-      formData.append('courseData', JSON.stringify(courseData))
-      formData.append('image', image)
+        // If you have an upload endpoint, upload the file first and set imageUrl
+        // For now we send an empty imageUrl; backend should accept and persist.
+        const payload = {
+          title: courseTitle,
+          description: description,
+          price: Number(coursePrice),
+          discount: Number(discount),
+          imageUrl: '',
+          courseContent: chapters,
+        };
 
-      const token = await getToken()
-
-      const { data } = await axios.post(backendUrl + '/api/educator/add-course', formData,
-        { headers: { Authorization: `Bearer ${token}` } }
-      )
-
-      if (data.success) {
-        toast.success(data.message)
-        setCourseTitle('')
-        setCoursePrice(0)
-        setDiscount(0)
-        setImage(null)
-        setChapters([])
-        quillRef.current.root.innerHTML = ""
-      } else (
-        toast.error(data.message)
-      )
-
-    } catch (error) {
-      toast.error(error.message)
-    }
-
-  };
+        const { data } = await axios.post(backendUrl + '/api/courses', payload, {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: token ? `Bearer ${token}` : '',
+          },
+        });
+      }
+  }
 
   useEffect(() => {
-    // Initiate Quill only once
+    // Initiate Quill only once. Nothing 
     if (!quillRef.current && editorRef.current) {
       quillRef.current = new Quill(editorRef.current, {
         theme: 'snow',
@@ -373,8 +416,12 @@ const AddCourse = () => {
               )}
             </div>
 
-            <button type="submit" className='bg-black text-white w-max py-2.5 px-8 rounded my-4'>
-              ADD
+            <button
+              type="submit"
+              className={"bg-black text-white w-max py-2.5 px-8 rounded my-4 " + (submitting ? 'opacity-60 cursor-not-allowed' : '')}
+              disabled={submitting}
+            >
+              {submitting ? 'Adding...' : 'ADD'}
             </button>
           </form>
         </div>

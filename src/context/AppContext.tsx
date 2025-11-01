@@ -29,6 +29,7 @@ interface AppContextType {
   login: (provider: string) => Promise<void>;
   logout: () => void;
   backendUrl: string;
+  getToken?: () => Promise<string | null>;
   currency: string;
   navigate: ReturnType<typeof useNavigate>;
   userData: any;
@@ -96,6 +97,11 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({
   // Auth methods
   const login = async (provider: string) => {
     await authService.login(provider);
+  };
+
+  const getToken = async () => {
+    // authService stores token synchronously; wrap as promise for callers that await it
+    return Promise.resolve(authService.getToken());
   };
 
   const logout = () => {
@@ -211,6 +217,7 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({
     hasRole,
     login,
     logout,
+    getToken,
     backendUrl,
     currency,
     navigate,
