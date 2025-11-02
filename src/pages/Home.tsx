@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from "react-router-dom";
 import { PublicHeader } from "@/components/PublicHeader";
 import { Footer } from "@/components/Footer";
 import { CourseCard } from "@/components/CourseCard";
@@ -165,7 +166,7 @@ const Home: React.FC = () => {
             Master skills with our expert-curated courses, advance your career, and achieve your professional goals with flexible, accessible learning.
           </p>
           <div className="flex gap-4 justify-center">
-            <Button size="lg">Get Started</Button>
+            <Button size="lg"><Link to="/courses">Get Started</Link></Button>
             {/* <Button size="lg" variant="outline">I'm Here</Button> */}
           </div>
         </div>

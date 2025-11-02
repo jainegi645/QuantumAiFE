@@ -27,7 +27,7 @@ export const CourseCard = ({ id, title, image, duration, level, price }: CourseC
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
             <div className="flex items-center gap-1">
               <Clock className="h-4 w-4" />
-              <span>{duration}</span>
+              <span>{duration} Hours</span>
             </div>
             <div className="flex items-center gap-1">
               <BarChart3 className="h-4 w-4" />

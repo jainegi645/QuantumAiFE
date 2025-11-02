@@ -20,7 +20,15 @@ const AddCourse = () => {
   const [coursePrice, setCoursePrice] = useState(0)
   const [discount, setDiscount] = useState(0)
   const [image, setImage] = useState(null)
+  const [imageBase64, setImageBase64] = useState('')
   const [chapters, setChapters] = useState([]);
+  const [isPaid, setIsPaid] = useState(true)
+  const [category, setCategory] = useState('')
+  const [duration, setDuration] = useState(0)
+  const [difficultyLevel, setDifficultyLevel] = useState('')
+
+  const categories = ['Web Development', 'Mobile Development', 'Data Science']
+  const difficultyLevels = ['Beginner', 'Intermediate', 'Advanced']
   const [showPopup, setShowPopup] = useState(false);
   const [currentChapterId, setCurrentChapterId] = useState(null);
   const [lectureDetails, setLectureDetails] = useState({
@@ -138,47 +146,94 @@ const AddCourse = () => {
     });
   };
 
+  const convertImageToBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = (error) => reject(error);
+    });
+  };
+  // Compress an image file and return a base64 data URL.
+  const compressAndConvertToBase64 = (file, maxWidth = 1024, quality = 0.8) => {
+    return new Promise((resolve, reject) => {
+      try {
+        const img = new Image();
+        const url = URL.createObjectURL(file);
+        img.onload = () => {
+          let { width, height } = img;
+          if (width > maxWidth) {
+            const ratio = maxWidth / width;
+            width = maxWidth;
+            height = height * ratio;
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            URL.revokeObjectURL(url);
+            reject(new Error('Canvas not supported'));
+            return;
+          }
+          ctx.drawImage(img, 0, 0, width, height);
+          // default to image/jpeg for compression; keep original type if needed
+          const mime = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
+          const dataUrl = canvas.toDataURL(mime, quality);
+          URL.revokeObjectURL(url);
+          resolve(dataUrl);
+        };
+        img.onerror = (err) => {
+          URL.revokeObjectURL(url);
+          reject(err);
+        };
+        img.src = url;
+      } catch (err) {
+        reject(err);
+      }
+    });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('AddCourse: handleSubmit called');
     setSubmitting(true);
-    console.log('AddCourse: handleSubmit called 2');
-
-    // ensure description is available in finally block as well
-    let description = courseDescription;
 
     try {
-      if (!image) {
+      // require base64 image (we compress+convert at selection time)
+      if (!imageBase64) {
         toast.error('Thumbnail Not Selected');
-        console.log('AddCourse: handleSubmit called 3 - no image');
         setSubmitting(false);
         return;
       }
 
-      description = quillRef?.current?.root?.innerHTML ?? courseDescription;
-      console.log('AddCourse: handleSubmit called 3 b - description prepared');
-      const courseData = {
-        courseTitle,
-        courseDescription: description,
-        coursePrice: Number(coursePrice),
-        discount: Number(discount),
+      const description = quillRef?.current?.root?.innerHTML ?? courseDescription;
+
+      // final price calculation
+      const priceNum = Number(coursePrice) || 0;
+      const discountNum = Number(discount) || 0;
+      const finalPrice = Math.max(0, Math.round((priceNum * (1 - discountNum / 100)) * 100) / 100);
+
+      const payload = {
+        title: courseTitle,
+        description: description,
+        price: priceNum,
+        discount: discountNum,
+        finalPrice,
+        imageUrl: imageBase64,
         courseContent: chapters,
+        paid: isPaid,
+        category: category,
+        duration: Number(duration),
+        level: difficultyLevel,
       };
 
-      const formData = new FormData();
-      formData.append('courseData', JSON.stringify(courseData));
-      console.log('AddCourse: handleSubmit called 4 - courseData appended');
-      formData.append('image', image);
-      console.log('AddCourse: handleSubmit called 5 - formData prepared');
-
       const token = getToken ? await getToken() : null;
-      console.log('AddCourse: posting to', backendUrl + '/api/courses', { token });
-
-      const { data } = await axios.post(backendUrl + '/api/courses', formData, {
-        headers: { Authorization: token ? `Bearer ${token}` : '' },
+      const { data } = await axios.post(backendUrl + '/api/courses', payload, {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: token ? `Bearer ${token}` : '',
+        },
       });
-
-      console.log('AddCourse: response', data);
 
       if (data?.success) {
         toast.success(data.message || 'Course added');
@@ -187,6 +242,7 @@ const AddCourse = () => {
         setCoursePrice(0);
         setDiscount(0);
         setImage(null);
+        setImageBase64('');
         setChapters([]);
         if (quillRef?.current?.root) quillRef.current.root.innerHTML = '';
         // Refresh page to show new data
@@ -199,30 +255,8 @@ const AddCourse = () => {
       const msg = error?.response?.data?.message || error?.message || 'Submission failed';
       toast.error(msg);
     } finally {
-        // Backend Course model expects imageUrl as a string. Many backends
-        // don't accept multipart here (415). Send JSON with imageUrl (empty
-        // or pre-uploaded URL) unless you have a dedicated upload endpoint.
-        const token = getToken ? await getToken() : null;
-        console.log('AddCourse: posting JSON to', backendUrl + '/api/courses', { token });
-
-        // If you have an upload endpoint, upload the file first and set imageUrl
-        // For now we send an empty imageUrl; backend should accept and persist.
-        const payload = {
-          title: courseTitle,
-          description: description,
-          price: Number(coursePrice),
-          discount: Number(discount),
-          imageUrl: '',
-          courseContent: chapters,
-        };
-
-        const { data } = await axios.post(backendUrl + '/api/courses', payload, {
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: token ? `Bearer ${token}` : '',
-          },
-        });
-      }
+      setSubmitting(false);
+    }
   }
 
   useEffect(() => {
@@ -237,6 +271,14 @@ const AddCourse = () => {
   useEffect(() => {
     console.log(chapters);
   }, [chapters]);
+
+  // Effect to handle price and discount when course type changes
+  useEffect(() => {
+    if (!isPaid) {
+      setCoursePrice(0);
+      setDiscount(0);
+    }
+  }, [isPaid]);
 
   return (
     <div className='h-screen overflow-scroll md:p-8 p-4 pt-8 pb-0'>
@@ -263,25 +305,136 @@ const AddCourse = () => {
               {/* <div ref={editorRef}></div> */}
             </div>
 
-            <div className='flex items-center justify-between flex-wrap'>
+            <div className='flex items-center justify-between flex-wrap gap-4 mb-2'>
               <div className='flex flex-col gap-1'>
-                <p><b>Course Price</b></p>
-                <input onChange={e => setCoursePrice(Number(e.target.value))} value={coursePrice} type="number" placeholder='0' className='outline-none md:py-2.5 py-2 w-28 px-3 rounded border border-gray-500' required />
-              </ div>
+                <p><b>Course Type</b></p>
+                <div className="flex items-center gap-4">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      checked={isPaid}
+                      onChange={() => setIsPaid(true)}
+                      className="scale-125"
+                      name="courseType"
+                      required
+                    />
+                    Paid
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      checked={!isPaid}
+                      onChange={() => setIsPaid(false)}
+                      className="scale-125"
+                      name="courseType"
+                      required
+                    />
+                    Free
+                  </label>
+                </div>
+              </div>
 
               <div className='flex md:flex-row flex-col items-center gap-3'>
                 <p><b>Course Thumbnail</b></p>
                 <label htmlFor='thumbnailImage' className='flex items-center gap-3'>
                   <img src={assets.file_upload_icon} alt="" className='p-3 bg-blue-500 rounded' />
-                  <input type="file" id='thumbnailImage' onChange={e => setImage(e.target.files[0])} accept="image/*" hidden />
+                  <input 
+                    type="file" 
+                    id='thumbnailImage' 
+                    onChange={async (e) => {
+                      const file = e.target.files[0];
+                      if (file) {
+                        setImage(file);
+                        try {
+                          const base64 = await compressAndConvertToBase64(file, 1024, 0.8);
+                          setImageBase64(base64);
+                        } catch (error) {
+                          console.error('Error compressing/converting image:', error);
+                          toast.error('Error processing image');
+                        }
+                      }
+                    }} 
+                    accept="image/*" 
+                    hidden 
+                    required 
+                  />
                   <img className='max-h-10' src={image ? URL.createObjectURL(image) : ''} alt="" />
                 </label>
               </div>
             </div>
 
+            {isPaid && (
+              <div className='flex items-center gap-10 flex-wrap'>
+                <div className='flex flex-col gap-1'>
+                  <p><b>Course Price</b></p>
+                  <input 
+                    onChange={e => setCoursePrice(Number(e.target.value))} 
+                    value={coursePrice} 
+                    type="number" 
+                    placeholder='0' 
+                    className='outline-none md:py-2.5 py-2 w-28 px-3 rounded border border-gray-500' 
+                    required={isPaid}
+                    min="0"
+                  />
+                </div>
+
+                <div className='flex flex-col gap-1'>
+                  <p><b>Discount</b> %</p>
+                  <input 
+                    onChange={e => setDiscount(Number(e.target.value))} 
+                    value={discount} 
+                    type="number" 
+                    placeholder='0' 
+                    min={0} 
+                    max={100} 
+                    className='outline-none md:py-2.5 py-2 w-28 px-3 rounded border border-gray-500' 
+                    required={isPaid}
+                  />
+                </div>
+              </div>
+            )}
+
             <div className='flex flex-col gap-1'>
-              <p><b>Discount</b> %</p>
-              <input onChange={e => setDiscount(Number(e.target.value))} value={discount} type="number" placeholder='0' min={0} max={100} className='outline-none md:py-2.5 py-2 w-28 px-3 rounded border border-gray-500' required />
+              <p><b>Category</b></p>
+              <select 
+                value={category}
+                onChange={e => setCategory(e.target.value)}
+                className='outline-none md:py-2.5 py-2 px-3 rounded border border-gray-500'
+                required
+              >
+                <option value="">Select Category</option>
+                {categories.map((cat) => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className='flex flex-col gap-1'>
+              <p><b>Duration (hours)</b></p>
+              <input
+                type="number"
+                value={duration}
+                onChange={e => setDuration(Number(e.target.value))}
+                min="0"
+                step="0.5"
+                className='outline-none md:py-2.5 py-2 px-3 rounded border border-gray-500'
+                required
+              />
+            </div>
+
+            <div className='flex flex-col gap-1'>
+              <p><b>Difficulty Level</b></p>
+              <select 
+                value={difficultyLevel}
+                onChange={e => setDifficultyLevel(e.target.value)}
+                className='outline-none md:py-2.5 py-2 px-3 rounded border border-gray-500'
+                required
+              >
+                <option value="">Select Difficulty Level</option>
+                {difficultyLevels.map((level) => (
+                  <option key={level} value={level}>{level}</option>
+                ))}
+              </select>
             </div>
 
             {/* Adding Chapters & Lectures */}
