@@ -18,6 +18,14 @@ export const endpoints = {
   topNewFree: '/api/courses/top-free',
   mostPopular: '/api/courses/top-paid-popular',
 
+  // Courses by filters
+  coursesByCategory: (category: string) => `/api/courses/search/category`,
+  coursesByLevel: (level: string) => `/api/courses/search/level`,
+  coursesByTag: (tag: string) => `/api/courses/search/tag`,
+  coursesByDuration: (duration: string) => `/api/courses/search/duration`,
+  coursesByPriceRange: (price: string) => `/api/courses/search/price-range`,
+  getAllCourses: '/api/courses/all',
+  
   // Course progress
   courseProgress: '/api/course-progress',
   courseProgressByUser: (userId: string) => `/api/course-progress/user/${userId}`,
