@@ -6,7 +6,7 @@ import { CourseCard } from "@/components/CourseCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Database, FlaskConical, LineChart, BookOpen, BrainCircuit } from "lucide-react";
-import { coursesData } from "@/data/courses";
+// import { coursesData } from "@/data/courses";
 import { apiService } from '../api/apiCalling';
 import { endpoints } from '../api/endpoints';
 
@@ -18,7 +18,7 @@ const categories = [
   { icon: BrainCircuit, label: "Data Science" }
 ];
 
-const courses = Array(5).fill(coursesData[0]);
+// const courses = Array(5).fill(coursesData[0]);
 
 interface QuantumData {
   // Define your data interface here

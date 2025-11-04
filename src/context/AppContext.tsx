@@ -5,15 +5,25 @@ import { toast } from "react-toastify";
 import humanizeDuration from "humanize-duration";
 import { authService } from "@/services/auth.service";
 
-// Small domain typings — keep these minimal and extend as your app grows
+import { Course, Chapter, Lecture, Notes, ContentItem } from '@/types/course';
 type Lecture = {
-  lectureDuration: number; // in minutes
-  [key: string]: any;
+  type: 'lecture';
+  lectureId: string;
+  lectureTitle: string;
+  lectureDuration: string | number;
+  lectureUrl?: string;
+  isPreviewFree?: boolean;
+  lectureOrder?: number;
 };
 
+type ContentItem = Lecture | { type: 'notes' };
+
 type Chapter = {
-  chapterContent: Lecture[];
-  [key: string]: any;
+  chapterId: string;
+  chapterTitle: string;
+  chapterOrder?: number;
+  collapsed?: boolean;
+  chapterContent: ContentItem[];
 };
 
 type Course = {
@@ -162,20 +172,98 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({
     }
   };
 
+  // Parse duration string into minutes
+  const parseDuration = (duration: string | number | undefined): number => {
+    if (!duration) return 0;
+    
+    // Handle number input
+    if (typeof duration === 'number') return duration;
+    
+    // Convert to string and clean up
+    const durationStr = String(duration).trim().toLowerCase();
+    
+    // Log duration parsing
+    console.debug('Parsing duration:', durationStr);
+    
+    // Try to parse direct minutes first
+    const minutes = parseInt(durationStr);
+    if (!isNaN(minutes)) {
+      console.debug('Parsed direct minutes:', minutes);
+      return minutes;
+    }
+    
+    // If not direct minutes, assume it's a formatted string
+    const hoursMatch = durationStr.match(/(\d+)\s*h/);
+    const minutesMatch = durationStr.match(/(\d+)\s*m/);
+    
+    let totalMinutes = 0;
+    if (hoursMatch) {
+      const hours = parseInt(hoursMatch[1]);
+      totalMinutes += hours * 60;
+      console.debug('Added hours:', hours, 'to total:', totalMinutes);
+    }
+    if (minutesMatch) {
+      const mins = parseInt(minutesMatch[1]);
+      totalMinutes += mins;
+      console.debug('Added minutes:', mins, 'to total:', totalMinutes);
+    }
+    
+    return totalMinutes;
+  };
+
   // Function to Calculate Course Chapter Time
   const calculateChapterTime = (chapter: Chapter) => {
-    let time = 0;
-    chapter.chapterContent.forEach((lecture) => (time += lecture.lectureDuration));
-    return humanizeDuration(time * 60 * 1000, { units: ["h", "m"] });
+    if (!chapter?.chapterContent) {
+      console.debug('No chapter content found');
+      return '0m';
+    }
+    
+    let totalMinutes = 0;
+    const lectures = chapter.chapterContent.filter((item): item is Lecture => item.type === 'lecture');
+    
+    console.debug('Processing chapter:', chapter.chapterTitle);
+    console.debug('Found lectures:', lectures.length);
+    
+    lectures.forEach((lecture) => {
+      const duration = parseDuration(lecture.lectureDuration);
+      totalMinutes += duration;
+      console.debug('Added lecture duration:', duration, 'for lecture:', lecture.lectureTitle);
+    });
+    
+    console.debug('Chapter total minutes:', totalMinutes);
+    
+    if (totalMinutes === 0) return '0m';
+    return humanizeDuration(totalMinutes * 60 * 1000, { units: ["h", "m"], round: true });
   };
 
   // Function to Calculate Course Duration
   const calculateCourseDuration = (course: Course) => {
-    let time = 0;
-    course.courseContent.forEach((chapter) =>
-      chapter.chapterContent.forEach((lecture) => (time += lecture.lectureDuration))
-    );
-    return humanizeDuration(time * 60 * 1000, { units: ["h", "m"] });
+    if (!course?.courseContent) {
+      console.debug('No course content found');
+      return '0m';
+    }
+    
+    let totalMinutes = 0;
+    console.debug('Processing course:', course.title);
+    
+    course.courseContent.forEach((chapter, idx) => {
+      if (Array.isArray(chapter?.chapterContent)) {
+        console.debug(`Processing chapter ${idx}:`, chapter.chapterTitle);
+        const lectures = chapter.chapterContent.filter((item): item is Lecture => item.type === 'lecture');
+        console.debug('Found lectures:', lectures.length);
+        
+        lectures.forEach((lecture) => {
+          const duration = parseDuration(lecture.lectureDuration);
+          totalMinutes += duration;
+          console.debug('Added lecture duration:', duration, 'for lecture:', lecture.lectureTitle);
+        });
+      }
+    });
+    
+    console.debug('Course total minutes:', totalMinutes);
+    
+    if (totalMinutes === 0) return '0m';
+    return humanizeDuration(totalMinutes * 60 * 1000, { units: ["h", "m"], round: true });
   };
 
   const calculateRating = (course: Course) => {
@@ -191,10 +279,11 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({
   };
 
   const calculateNoOfLectures = (course: Course) => {
+    if (!course?.courseContent) return 0;
     let totalLectures = 0;
     course.courseContent.forEach((chapter) => {
-      if (Array.isArray(chapter.chapterContent)) {
-        totalLectures += chapter.chapterContent.length;
+      if (Array.isArray(chapter?.chapterContent)) {
+        totalLectures += chapter.chapterContent.filter(item => item.type === 'lecture').length;
       }
     });
     return totalLectures;

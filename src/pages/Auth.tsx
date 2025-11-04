@@ -99,7 +99,7 @@ export default function Auth() {
           title: "Success",
           description: "Logged in successfully!"
         });
-        navigate("/dashboard");
+        navigate("/");
       } else {
         toast({
           variant: "destructive",
