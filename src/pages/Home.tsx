@@ -232,8 +232,11 @@ const Home: React.FC = () => {
                 const image = course.image || course.imageUrl || '/placeholder.svg';
                 const duration = course.duration || course.totalDuration || '0 Hours';
                 const level = course.level || course.difficulty || 'All Levels';
-                const price = course.price
-                  ? (typeof course.price === 'number' ? `$${course.price}` : course.price)
+                // const price = course.price
+                //   ? (typeof course.price === 'number' ? `$${course.price}` : course.price)
+                //   : (course.coursePrice ? (typeof course.coursePrice === 'number' ? `$${course.coursePrice}` : String(course.coursePrice)) : undefined);
+                const price = course.finalPrice
+                  ? (typeof course.finalPrice === 'number' ? `$${course.finalPrice}` : course.finalPrice)
                   : (course.coursePrice ? (typeof course.coursePrice === 'number' ? `$${course.coursePrice}` : String(course.coursePrice)) : undefined);
 
                 const idProp = rawId ?? String(idx);
@@ -264,7 +267,7 @@ const Home: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
             {(topPopularLoading || loading) && topPopularCourses.length === 0 ? (
               Array.from({ length: 5 }).map((_, i) => (
-                <div key={`pop-skel-${i}`} className="rounded-lg bg-white border p-4 animate-pulse">
+                <div key={`skeleton-${i}`} className="rounded-lg bg-white border p-4 animate-pulse">
                   <div className="aspect-video bg-gray-200 mb-4" />
                   <div className="h-4 bg-gray-200 rounded mb-2 w-3/4" />
                   <div className="h-3 bg-gray-200 rounded w-1/2" />
@@ -278,10 +281,14 @@ const Home: React.FC = () => {
                 const image = course.image || course.imageUrl || '/placeholder.svg';
                 const duration = course.duration || course.totalDuration || '0 Hours';
                 const level = course.level || course.difficulty || 'All Levels';
-                const price = course.price
-                  ? (typeof course.price === 'number' ? `$${course.price}` : course.price)
+                // const price = course.price
+                //   ? (typeof course.price === 'number' ? `$${course.price}` : course.price)
+                //   : (course.coursePrice ? (typeof course.coursePrice === 'number' ? `$${course.coursePrice}` : String(course.coursePrice)) : undefined);
+                const price = course.finalPrice
+                  ? (typeof course.finalPrice === 'number' ? `$${course.finalPrice}` : course.finalPrice)
                   : (course.coursePrice ? (typeof course.coursePrice === 'number' ? `$${course.coursePrice}` : String(course.coursePrice)) : undefined);
-                const idProp = rawId ?? String(idx);
+
+                  const idProp = rawId ?? String(idx);
                 return (
                   <CourseCard
                     key={keyId}
@@ -322,9 +329,13 @@ const Home: React.FC = () => {
                 const image = course.image || course.imageUrl || '/placeholder.svg';
                 const duration = course.duration || course.totalDuration || '0 Hours';
                 const level = course.level || course.difficulty || 'All Levels';
-                const price = course.price
-                  ? (typeof course.price === 'number' ? `$${course.price}` : course.price)
+                // const price = course.price
+                //   ? (typeof course.price === 'number' ? `$${course.price}` : course.price)
+                //   : (course.coursePrice ? (typeof course.coursePrice === 'number' ? `$${course.coursePrice}` : String(course.coursePrice)) : undefined);
+                const price = course.finalPrice
+                  ? (typeof course.finalPrice === 'number' ? `$${course.finalPrice}` : course.finalPrice)
                   : (course.coursePrice ? (typeof course.coursePrice === 'number' ? `$${course.coursePrice}` : String(course.coursePrice)) : undefined);
+
                 const idProp = rawId ?? String(idx);
                 return (
                   <CourseCard
