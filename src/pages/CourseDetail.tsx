@@ -25,30 +25,69 @@ export default function CourseDetail() {
   const fetchCourseDetails = async (courseId: string) => {
     try {
       setLoading(true);
-      const data = await apiService.get<Course>(endpoints.course, null, [courseId]);
-      console.debug('Raw API response:', data);
+      setError(null);
+      
+      const response = await apiService.get<any>(endpoints.course, null, [courseId]);
+      console.debug('Raw API response:', response);
       
       let courseData;
-      if ('course' in data) {
-        courseData = data.course;
+      if (response?.course) {
+        courseData = response.course;
+      } else if (response?.data) {
+        courseData = response.data;
       } else {
-        courseData = data as Course;
+        courseData = response;
       }
 
-      // Log course structure for debugging
+      // Ensure courseContent and chapterContent are arrays
       if (courseData) {
-        console.debug('Course Content Structure:', 
-          courseData.courseContent?.map(chapter => ({
-            id: chapter.chapterId,
+        courseData.courseContent = Array.isArray(courseData.courseContent) 
+          ? courseData.courseContent.map(chapter => ({
+              ...chapter,
+              chapterContent: Array.isArray(chapter.chapterContent) 
+                ? chapter.chapterContent.map(item => ({
+                    ...item,
+                    type: item.type || (item.lectureTitle ? 'lecture' : 'notes')
+                  }))
+                : []
+            }))
+          : [];
+          
+        console.debug('Processed Course Data:', {
+          id: courseData.id,
+          title: courseData.title,
+          chaptersCount: courseData.courseContent.length,
+          chapters: courseData.courseContent.map(chapter => ({
             title: chapter.chapterTitle,
-            lectureCount: chapter.chapterContent?.filter(item => item.type === 'lecture').length,
-            firstLecture: chapter.chapterContent?.find(item => item.type === 'lecture')
+            content: chapter.chapterContent,
+            lectureCount: chapter.chapterContent.filter(item => item.type === 'lecture').length,
+            firstItem: chapter.chapterContent[0]
           }))
-        );
+        });
       }
 
       setCourse(courseData);
-      setError(null);
+      
+      // Fetch user progress if needed
+      const userId = userData?.id ?? userData?._id;
+      if (userId) {
+        try {
+          const progressRes = await apiService.get<any>(endpoints.courseProgressByUser as any, null, [userId]);
+          const progressArr = Array.isArray(progressRes) ? progressRes : (progressRes?.progress ?? progressRes?.data ?? []);
+          const set = new Set<string>();
+          
+          (progressArr || []).forEach((p: any) => {
+            if (!p) return;
+            if (p.courseId && String(p.courseId) !== String(courseId)) return;
+            if (p.lectureId) set.add(String(p.lectureId));
+            if (p.lessonId) set.add(String(p.lessonId));
+            if (p.lectureTitle) set.add(String(p.lectureTitle));
+          });
+          setProgressSet(set);
+        } catch (err) {
+          console.warn('Failed to load course progress:', err);
+        }
+      }
     } catch (err) {
       console.error('Failed to fetch course details:', err);
       setError('Failed to load course details');
@@ -58,9 +97,15 @@ export default function CourseDetail() {
   };
 
   const toggleSection = (index: number) => {
-    setExpandedSections(prev =>
-      prev.includes(index) ? prev.filter(i => i !== index) : [...prev, index]
-    );
+    console.log('Toggling section:', index);
+    console.log('Current expandedSections:', expandedSections);
+    setExpandedSections(prev => {
+      const newSections = prev.includes(index) 
+        ? prev.filter(i => i !== index) 
+        : [...prev, index];
+      console.log('New expandedSections:', newSections);
+      return newSections;
+    });
   };
 
   const parseDurationToMinutes = (str?: string) => {
@@ -96,53 +141,8 @@ export default function CourseDetail() {
         return;
       }
 
-      setLoading(true);
-      setError(null);
-      
       try {
-        // Use endpoints.course with apiService
-        const courseResponse = await apiService.get<any>(endpoints.course, null, [id]);
-        console.debug('Course details response:', JSON.stringify(courseResponse, null, 2));
-
-        let courseData;
-        if (courseResponse?.course) {
-          courseData = courseResponse.course;
-        } else if (courseResponse?.data) {
-          courseData = courseResponse.data;
-        } else {
-          courseData = courseResponse;
-        }
-
-        // Log the course content structure
-        console.debug('Course Content:', courseData?.courseContent?.map(chapter => ({
-          chapterTitle: chapter.chapterTitle,
-          contentCount: chapter.chapterContent?.length,
-          lectures: chapter.chapterContent?.filter(item => item.type === 'lecture').length
-        })));
-
-        setCourse(courseData);
-        // }
-        // fetch user progress (if user is logged in)
-        const userId = userData?.id ?? userData?._id;
-        if (userId) {
-          try {
-            const progressRes = await apiService.get<any>(endpoints.courseProgressByUser as any, null, [userId]);
-            const progressArr = Array.isArray(progressRes) ? progressRes : (progressRes?.progress ?? progressRes?.data ?? []);
-            const set = new Set<string>();
-            // progress items may have lectureId, lessonId or lectureTitle
-            (progressArr || []).forEach((p: any) => {
-              if (!p) return;
-              if (p.courseId && String(p.courseId) !== String(id)) return; // only this course
-              if (p.lectureId) set.add(String(p.lectureId));
-              if (p.lessonId) set.add(String(p.lessonId));
-              if (p.lectureTitle) set.add(String(p.lectureTitle));
-            });
-            setProgressSet(set);
-          } catch (err) {
-            // ignore progress errors — keep UI functional
-            console.warn('Failed to load course progress', err);
-          }
-        }
+        await fetchCourseDetails(id);
       } catch (err) {
         console.error('Failed to fetch course:', err);
       } finally {
@@ -156,8 +156,8 @@ export default function CourseDetail() {
   // Compute totals using normalized course shape
   const totalChapters = course ? (Array.isArray(course.courseContent) ? course.courseContent.length : 0) : 0;
   const totalLectures = course ? (Array.isArray(course.courseContent) ? course.courseContent.reduce((acc: number, ch: any) => acc + (Array.isArray(ch.chapterContent) ? ch.chapterContent.length : 0), 0) : 0) : 0;
+  // const totalDurationStr = course ? (calculateCourseDuration ? calculateCourseDuration(course) : '') : '';
   const totalDurationStr = course ? (calculateCourseDuration ? calculateCourseDuration(course) : '') : '';
-
   return (
     <div className="min-h-screen flex flex-col">
       <PublicHeader />
@@ -196,11 +196,35 @@ export default function CourseDetail() {
 
                 <div className="space-y-2">
                   {course?.courseContent?.map((section: Chapter, idx: number) => {
-                    console.debug('Processing section:', section);
-                    const lectures = section.chapterContent?.filter(
-                      (item: ContentItem): item is Lecture => item.type === 'lecture'
-                    ) || [];
-                    console.debug('Filtered lectures:', lectures);
+                    // Debug section data
+                    console.debug(`Processing section ${idx}:`, {
+                      title: section.chapterTitle,
+                      contentCount: section.chapterContent?.length,
+                      content: section.chapterContent,
+                      isExpanded: expandedSections.includes(idx)
+                    });
+                    
+                    // Ensure chapterContent is an array and items have proper type
+                    const chapterContent = Array.isArray(section.chapterContent) 
+                      ? section.chapterContent.map(item => ({
+                          ...item,
+                          type: item.type || (item.lectureTitle ? 'lecture' : 'notes')
+                        }))
+                      : [];
+                    
+                    // Filter lectures
+                    const lectures = chapterContent.filter((item): item is Lecture => {
+                      const isLecture = item.type === 'lecture';
+                      console.debug(`Item in chapter ${section.chapterTitle}:`, {
+                        type: item.type,
+                        title: 'lectureTitle' in item ? item.lectureTitle : 'N/A',
+                        isLecture
+                      });
+                      return isLecture;
+                    });
+                    
+                    console.debug(`Lectures in section ${idx}:`, lectures);
+                    
                     const lecturesCount = lectures.length;
                     const chapterTime = calculateChapterTime ? calculateChapterTime(section) : '';
                     return (
@@ -216,7 +240,7 @@ export default function CourseDetail() {
                               ) : (
                                 <ChevronDown className="h-5 w-5" />
                               )}
-                              <span className="font-semibold text-left">{section.chapterTitle ?? section.title}</span>
+                              <span className="font-semibold text-left">{section.chapterTitle}</span>
                             </div>
                             <span className="text-sm text-muted-foreground">
                               {lecturesCount} lectures • {chapterTime}

@@ -6,31 +6,31 @@ import humanizeDuration from "humanize-duration";
 import { authService } from "@/services/auth.service";
 
 import { Course, Chapter, Lecture, Notes, ContentItem } from '@/types/course';
-type Lecture = {
-  type: 'lecture';
-  lectureId: string;
-  lectureTitle: string;
-  lectureDuration: string | number;
-  lectureUrl?: string;
-  isPreviewFree?: boolean;
-  lectureOrder?: number;
-};
+// type Lecture = {
+//   type: 'lecture';
+//   lectureId: string;
+//   lectureTitle: string;
+//   lectureDuration: string | number;
+//   lectureUrl?: string;
+//   isPreviewFree?: boolean;
+//   lectureOrder?: number;
+// };
 
-type ContentItem = Lecture | { type: 'notes' };
+// type ContentItem = Lecture | { type: 'notes' };
 
-type Chapter = {
-  chapterId: string;
-  chapterTitle: string;
-  chapterOrder?: number;
-  collapsed?: boolean;
-  chapterContent: ContentItem[];
-};
+// type Chapter = {
+//   chapterId: string;
+//   chapterTitle: string;
+//   chapterOrder?: number;
+//   collapsed?: boolean;
+//   chapterContent: ContentItem[];
+// };
 
-type Course = {
-  courseContent: Chapter[];
-  courseRatings: { rating: number }[];
-  [key: string]: any;
-};
+// type Course = {
+//   courseContent: Chapter[];
+//   courseRatings: { rating: number }[];
+//   [key: string]: any;
+// };
 
 interface AppContextType {
   isAuthenticated: boolean;
@@ -266,17 +266,18 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({
     return humanizeDuration(totalMinutes * 60 * 1000, { units: ["h", "m"], round: true });
   };
 
-  const calculateRating = (course: Course) => {
-    if (!course.courseRatings || course.courseRatings.length === 0) {
-      return 0;
-    }
+  // Course Rating Functionality - TODO
+  // const calculateRating = (course: Course) => {
+  //   if (!course.courseRatings || course.courseRatings.length === 0) {
+  //     return 0;
+  //   }
 
-    let totalRating = 0;
-    course.courseRatings.forEach((rating) => {
-      totalRating += rating.rating;
-    });
-    return Math.floor(totalRating / course.courseRatings.length);
-  };
+  //   let totalRating = 0;
+  //   course.courseRatings.forEach((rating) => {
+  //     totalRating += rating.rating;
+  //   });
+  //   return Math.floor(totalRating / course.courseRatings.length);
+  // };
 
   const calculateNoOfLectures = (course: Course) => {
     if (!course?.courseContent) return 0;
@@ -319,7 +320,7 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({
     fetchUserData,
     calculateChapterTime,
     calculateCourseDuration,
-    calculateRating,
+    // calculateRating,
     calculateNoOfLectures,
     isEducator,
     setIsEducator,
