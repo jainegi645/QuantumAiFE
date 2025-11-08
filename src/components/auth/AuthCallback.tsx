@@ -19,7 +19,7 @@ export const AuthCallback = () => {
       try {
         await authService.handleAuthCallback(code);
         toast.success('Successfully logged in!');
-        navigate('/dashboard');
+        navigate('/');
       } catch (error: any) {
         toast.error(error.message || 'Authentication failed');
         navigate('/');

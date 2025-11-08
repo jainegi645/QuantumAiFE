@@ -10,6 +10,7 @@ import { apiService } from "@/api/apiCalling";
 import { endpoints } from "@/api/endpoints";
 import { authService } from "@/services/auth.service";
 import { useSearchParams } from "react-router-dom";
+import OtpVerification from "@/components/auth/OtpVerification";
 
 export default function Auth() {
   const [searchParams] = useSearchParams();
@@ -29,6 +30,8 @@ export default function Auth() {
   const [lastName, setLastName] = useState("");
   const [registerEmail, setRegisterEmail] = useState("");
   const [registerPassword, setRegisterPassword] = useState("");
+  const [showOtpVerification, setShowOtpVerification] = useState(false);
+  const [registrationData, setRegistrationData] = useState<any>(null);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,10 +98,10 @@ export default function Auth() {
         // Update app context and navigate
         await context?.fetchUserData();
         
-        toast({
-          title: "Success",
-          description: "Logged in successfully!"
-        });
+        // toast({
+        //   title: "Success",
+        //   description: "Logged in successfully!"
+        // });
         navigate("/");
       } else {
         toast({
@@ -131,16 +134,16 @@ export default function Auth() {
         password: registerPassword,
       };
 
-      await apiService.post<any>(endpoints.register, payload);
+      const response = await apiService.post<any>(endpoints.register, payload);
       
-      // Registration successful (201 Created) - show message and switch to login
+      // Store registration data and show OTP verification
+      setRegistrationData(response);
+      setShowOtpVerification(true);
+      
       toast({
-        title: "Success",
-        description: "Registration successful! Please log in to continue."
+        title: "Verification Required",
+        description: "Please check your email for the verification code.",
       });
-      setActiveTab("login");
-      // Pre-fill login email for convenience
-      setLoginEmail(registerEmail);
     } catch (err: any) {
       console.error('Register error', err);
       // Handle specific error cases from backend
@@ -269,6 +272,23 @@ export default function Auth() {
                   <span className="px-2 bg-white text-gray-500">Or continue with</span>
                 </div>
               </div>
+
+              {/* OTP Verification Dialog */}
+              <OtpVerification 
+                open={showOtpVerification} 
+                onClose={() => setShowOtpVerification(false)}
+                onSuccess={() => {
+                  setShowOtpVerification(false);
+                  toast({
+                    title: "Success",
+                    description: "Email verified successfully! Please log in to continue."
+                  });
+                  setActiveTab("login");
+                  setLoginEmail(registerEmail);
+                }}
+                email={registerEmail}
+                registrationData={registrationData}
+              />
               <Button
                 type="button"
                 variant="outline"
