@@ -6,6 +6,8 @@ import { toast } from 'react-toastify'
 import Quill from 'quill';
 import uniqid from 'uniqid';
 import axios from 'axios'
+import { apiService } from '@/api/apiCalling';
+import { endpoints } from '@/api/endpoints';
 import { AppContext } from '../context/AppContext';
 
 const AddCourse = () => {
@@ -14,18 +16,20 @@ const AddCourse = () => {
   const quillRef = useRef(null);
 
   const { backendUrl, getToken } = useContext(AppContext)
+  // (Video uploads removed) client-side upload-size guard removed per project change request.
 
   const [courseTitle, setCourseTitle] = useState('')
   const [courseDescription, setCourseDescription] = useState('')
   const [coursePrice, setCoursePrice] = useState(0)
   const [discount, setDiscount] = useState(0)
-  const [image, setImage] = useState(null)
-  const [imageBase64, setImageBase64] = useState('')
+  const [thumbnailFile, setThumbnailFile] = useState(null)
+  const [thumbnailUrl, setThumbnailUrl] = useState('')
   const [chapters, setChapters] = useState([]);
   const [isPaid, setIsPaid] = useState(true)
   const [category, setCategory] = useState('')
-  const [duration, setDuration] = useState(0)
+  const [duration, setDuration] = useState('')
   const [difficultyLevel, setDifficultyLevel] = useState('')
+  const [tags, setTags] = useState<string[]>([])
 
   const categories = ['Web Development', 'Mobile Development', 'Data Science']
   const difficultyLevels = ['Beginner', 'Intermediate', 'Advanced']
@@ -88,20 +92,25 @@ const AddCourse = () => {
   };
 
   const addLecture = () => {
+    // Video upload removed: accept a manual URL (lectureUrl) or leave empty.
+    const finalLectureUrl = lectureDetails.lectureUrl || '';
+
     setChapters(
       chapters.map((chapter) => {
         if (chapter.chapterId === currentChapterId) {
           const newLecture = {
             ...lectureDetails,
+            lectureUrl: finalLectureUrl,
             lectureOrder: chapter.chapterContent.length > 0 ? chapter.chapterContent.slice(-1)[0].lectureOrder + 1 : 1,
             lectureId: uniqid(),
-            type: 'lecture'
+            type: 'lecture',
           };
           chapter.chapterContent.push(newLecture);
         }
         return chapter;
       })
     );
+
     setShowPopup(false);
     setLectureDetails({
       lectureTitle: '',
@@ -146,62 +155,36 @@ const AddCourse = () => {
     });
   };
 
-  const convertImageToBase64 = (file) => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = (error) => reject(error);
-    });
-  };
-  // Compress an image file and return a base64 data URL.
-  const compressAndConvertToBase64 = (file, maxWidth = 1024, quality = 0.8) => {
-    return new Promise((resolve, reject) => {
-      try {
-        const img = new Image();
-        const url = URL.createObjectURL(file);
-        img.onload = () => {
-          let { width, height } = img;
-          if (width > maxWidth) {
-            const ratio = maxWidth / width;
-            width = maxWidth;
-            height = height * ratio;
-          }
-          const canvas = document.createElement('canvas');
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          if (!ctx) {
-            URL.revokeObjectURL(url);
-            reject(new Error('Canvas not supported'));
-            return;
-          }
-          ctx.drawImage(img, 0, 0, width, height);
-          // default to image/jpeg for compression; keep original type if needed
-          const mime = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
-          const dataUrl = canvas.toDataURL(mime, quality);
-          URL.revokeObjectURL(url);
-          resolve(dataUrl);
-        };
-        img.onerror = (err) => {
-          URL.revokeObjectURL(url);
-          reject(err);
-        };
-        img.src = url;
-      } catch (err) {
-        reject(err);
-      }
-    });
-  };
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
 
     try {
-      // require base64 image (we compress+convert at selection time)
-      if (!imageBase64) {
-        toast.error('Thumbnail Not Selected');
+      console.log('Starting course submission...');
+
+      // Validate required fields
+      if (!courseTitle) {
+        toast.error('Please enter a course title');
+        setSubmitting(false);
+        return;
+      }
+
+      if (!thumbnailFile) {
+        toast.error('Please select a thumbnail image');
+        setSubmitting(false);
+        return;
+      }
+
+      if (isPaid && (!coursePrice || coursePrice <= 0)) {
+        toast.error('Please enter a valid course price');
+        setSubmitting(false);
+        return;
+      }
+
+      if (!category) {
+        toast.error('Please select a category');
         setSubmitting(false);
         return;
       }
@@ -209,55 +192,110 @@ const AddCourse = () => {
       const description = quillRef?.current?.root?.innerHTML ?? courseDescription;
 
       // final price calculation
+      // Convert to proper types as per backend model
       const priceNum = Number(coursePrice) || 0;
       const discountNum = Number(discount) || 0;
       const finalPrice = Math.max(0, Math.round((priceNum * (1 - discountNum / 100)) * 100) / 100);
 
-      const payload = {
+      // First create the course without thumbnail
+      const initialPayload = {
         title: courseTitle,
         description: description,
         price: priceNum,
         discount: discountNum,
-        finalPrice,
-        imageUrl: imageBase64,
+        finalPrice: finalPrice,
+        imageUrl: '', // Will be updated after thumbnail upload
         courseContent: chapters,
         paid: isPaid,
         category: category,
-        duration: Number(duration),
+        duration: duration.toString(),
         level: difficultyLevel,
+        tags: tags,
       };
 
+      console.log('Course payload:', initialPayload);
+      
       const token = getToken ? await getToken() : null;
-      const { data } = await axios.post(backendUrl + '/api/courses', payload, {
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: token ? `Bearer ${token}` : '',
-        },
-      });
-
-      if (data?.success) {
-        toast.success(data.message || 'Course added');
-        // Clear form
-        setCourseTitle('');
-        setCoursePrice(0);
-        setDiscount(0);
-        setImage(null);
-        setImageBase64('');
-        setChapters([]);
-        if (quillRef?.current?.root) quillRef.current.root.innerHTML = '';
-        // Refresh page to show new data
-        window.location.reload();
-      } else {
-        toast.error(data?.message || 'Failed to add course');
+      if (!token) {
+        toast.error('Authentication token not found. Please log in again.');
+        setSubmitting(false);
+        return;
       }
-    } catch (error: any) {
-      console.error('AddCourse: submit error', error);
-      const msg = error?.response?.data?.message || error?.message || 'Submission failed';
-      toast.error(msg);
-    } finally {
+
+      try {
+        console.log('Making POST request to:', backendUrl + '/api/courses');
+        const { data: courseData } = await axios.post(backendUrl + '/api/courses', initialPayload, {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        
+        console.log('Course creation response:', courseData);
+
+        if (courseData?.id) {
+          // Now upload the thumbnail with the course ID using apiService helper
+          console.log('Uploading thumbnail for course:', courseData.id);
+          try {
+            const uploadData = await apiService.uploadFile(endpoints.uploadCourseThumbnail, thumbnailFile, [courseData.id], {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            });
+            console.log('Thumbnail upload response:', uploadData);
+
+          if (uploadData?.imageUrl) {
+            // Update the course with the thumbnail URL (use PATCH: backend expects partial update)
+            await apiService.patch(endpoints.course, { imageUrl: uploadData.imageUrl }, [courseData.id], {
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: token ? `Bearer ${token}` : '',
+              },
+            });
+            toast.success('Course and thumbnail uploaded successfully');
+          } else {
+            console.warn('Thumbnail upload succeeded but no URL in response:', uploadData);
+            toast.warn('Course created but thumbnail URL not received from server');
+          }
+
+          // Optionally fetch server course or perform other post-create actions here.
+          toast.success('Course created successfully');
+
+          // Clear form
+          setCourseTitle('');
+          setCoursePrice(0);
+          setDiscount(0);
+          setThumbnailFile(null);
+          setThumbnailUrl('');
+          setChapters([]);
+          setTags([]);
+          if (quillRef?.current?.root) {
+            quillRef.current.root.innerHTML = '';
+          }
+      
+        //  else {
+        //   toast.error(courseData?.message || 'Failed to add course');
+        // }
+      } catch (error: any) {
+        console.error('AddCourse: submit error', error);
+        console.error('Error details:', {
+          response: error?.response?.data,
+          status: error?.response?.status,
+          message: error?.message
+        });
+        const msg = error?.response?.data?.message || error?.message || 'Submission failed';
+        toast.error(msg);
+      }
+      }
+    
+      } catch (outerError: any) {
+      console.error('Unexpected error in submit flow', outerError);
+      toast.error(outerError?.message || 'Submission failed');
+    }
+  } finally {
       setSubmitting(false);
     }
-  }
+  };
 
   useEffect(() => {
     // Initiate Quill only once. Nothing 
@@ -341,24 +379,30 @@ const AddCourse = () => {
                   <input 
                     type="file" 
                     id='thumbnailImage' 
-                    onChange={async (e) => {
-                      const file = e.target.files[0];
-                      if (file) {
-                        setImage(file);
-                        try {
-                          const base64 = await compressAndConvertToBase64(file, 1024, 0.8);
-                          setImageBase64(base64);
-                        } catch (error) {
-                          console.error('Error compressing/converting image:', error);
-                          toast.error('Error processing image');
-                        }
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      
+                      try {
+                        // Store the file for later upload
+                        setThumbnailFile(file);
+                        
+                        // Create a temporary URL for preview
+                        const previewUrl = URL.createObjectURL(file);
+                        setThumbnailUrl(previewUrl);
+                        setThumbnailFile(file);
+                        toast.success('Thumbnail selected successfully');
+                      } catch (error) {
+                        console.error('Error processing thumbnail:', error);
+                        toast.error('Failed to process thumbnail');
+                        setThumbnailFile(null);
+                        setThumbnailUrl('');
                       }
                     }} 
                     accept="image/*" 
-                    hidden 
                     required 
                   />
-                  <img className='max-h-10' src={image ? URL.createObjectURL(image) : ''} alt="" />
+                  <img className='max-h-10' src={thumbnailFile ? URL.createObjectURL(thumbnailFile) : ''} alt="" />
                 </label>
               </div>
             </div>
@@ -410,15 +454,49 @@ const AddCourse = () => {
             </div>
 
             <div className='flex flex-col gap-1'>
-              <p><b>Duration (hours)</b></p>
+              <p><b>Duration</b></p>
               <input
-                type="number"
+                type="text"
                 value={duration}
-                onChange={e => setDuration(Number(e.target.value))}
-                min="0"
-                step="0.5"
+                onChange={e => setDuration(e.target.value)}
+                placeholder="e.g., 2h 30m"
                 className='outline-none md:py-2.5 py-2 px-3 rounded border border-gray-500'
                 required
+              />
+              <span className="text-sm text-gray-500">Format: 2h 30m, 45m, etc.</span>
+            </div>
+
+            <div className='flex flex-col gap-1'>
+              <p><b>Tags</b></p>
+              <div className="flex flex-wrap gap-2">
+                {tags.map((tag, index) => (
+                  <div key={index} className="bg-blue-100 px-2 py-1 rounded flex items-center gap-2">
+                    {tag}
+                    <button
+                      type="button"
+                      onClick={() => setTags(tags.filter((_, i) => i !== index))}
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <input
+                type="text"
+                placeholder="Add tag and press Enter"
+                className='outline-none md:py-2.5 py-2 px-3 rounded border border-gray-500 mt-2'
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const input = e.target as HTMLInputElement;
+                    const value = input.value.trim();
+                    if (value && !tags.includes(value)) {
+                      setTags([...tags, value]);
+                      input.value = '';
+                    }
+                  }
+                }}
               />
             </div>
 
@@ -505,13 +583,21 @@ const AddCourse = () => {
                       />
                     </div>
                     <div className="mb-2">
-                      <p>Lecture URL</p>
+                      <p>Lecture Video</p>
                       <input
-                        type="text"
+                        type="file"
+                        accept="video/*"
                         className="mt-1 block w-full border rounded py-1 px-2"
-                        value={lectureDetails.lectureUrl}
-                        onChange={(e) => setLectureDetails({ ...lectureDetails, lectureUrl: e.target.value })}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            setLectureDetails({ ...lectureDetails, videoFile: file });
+                          }
+                        }}
                       />
+                      {lectureDetails.lectureUrl && (
+                        <p className="text-sm text-green-600 mt-1">Video will be uploaded when course is created</p>
+                      )}
                     </div>
                     <div className="flex gap-2 my-4">
                       <p>Is Preview Free?</p>
@@ -521,7 +607,9 @@ const AddCourse = () => {
                         onChange={(e) => setLectureDetails({ ...lectureDetails, isPreviewFree: e.target.checked })}
                       />
                     </div>
-                    <button type='button' className="w-full bg-blue-400 text-white px-4 py-2 rounded" onClick={addLecture}>Add</button>
+                    <button type='button' className="w-full bg-blue-400 text-white px-4 py-2 rounded" onClick={addLecture}>
+                      Add
+                    </button>
                     <img onClick={() => setShowPopup(false)} src={assets.cross_icon} className='absolute top-4 right-4 w-4 cursor-pointer' alt="" />
                   </div>
                 </div>
@@ -584,4 +672,3 @@ const AddCourse = () => {
 };
 
 export default AddCourse;
-

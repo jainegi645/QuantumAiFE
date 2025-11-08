@@ -25,11 +25,19 @@ export const endpoints = {
   coursesByDuration: (duration: string) => `/api/courses/search/duration`,
   coursesByPriceRange: (price: string) => `/api/courses/search/price-range`,
   getAllCourses: '/api/courses/all',
-  
+
   // Course progress
   courseProgress: '/api/course-progress',
   courseProgressByUser: (userId: string) => `/api/course-progress/user/${userId}`,
 
+  // Image uploads
+  uploadCourseThumbnail: (id: string) => `/api/courses/${id}/upload-thumbnail`,
+  uploadProfilePicture: (id: string) => `/api/users/${id}/upload-profile-picture`,
+
+  // Video upload
+  // uploadLectureVideo: (courseId: string, chapterId: string, lectureId: string) => `/api/courses/${courseId}/chapters/${chapterId}/lectures/${lectureId}/upload-video`,
+
+  
   // Course reviews
   courseReviews: '/api/course-reviews',
   courseReview: (id: string) => `/api/course-reviews/${id}`,

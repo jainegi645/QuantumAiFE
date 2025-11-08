@@ -114,6 +114,7 @@ const Home: React.FC = () => {
       if (Array.isArray(data)) setTopPopularCourses(data);
       else if (data && Array.isArray((data as any).courses)) setTopPopularCourses((data as any).courses);
       else if (data && Array.isArray((data as any).data)) setTopPopularCourses((data as any).data);
+      else if (data && Array.isArray((data as any).mostPopular)) setTopPopularCourses((data as any).mostPopular);
       else if (data && Array.isArray((data as any).result)) setTopPopularCourses((data as any).result);
       else {
         const arrVal = Object.values(data || {}).find((v) => Array.isArray(v));
@@ -211,7 +212,7 @@ const Home: React.FC = () => {
       </section>
 
       {/* Newly Released Courses */}
-      <section className="py-16">
+      <section className="py-16 bg-secondary">
         <div className="container">
           <h2 className="text-3xl font-bold mb-8">Newly Released Courses</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
@@ -231,10 +232,7 @@ const Home: React.FC = () => {
                 const title = course.title || course.courseTitle || course.name || 'Untitled Course';
                 const image = course.image || course.imageUrl || '/placeholder.svg';
                 const duration = course.duration || course.totalDuration || '0 Hours';
-                const level = course.level || course.difficulty || 'All Levels';
-                // const price = course.price
-                //   ? (typeof course.price === 'number' ? `$${course.price}` : course.price)
-                //   : (course.coursePrice ? (typeof course.coursePrice === 'number' ? `$${course.coursePrice}` : String(course.coursePrice)) : undefined);
+                const level = course.level || course.difficulty || 'All Levels';              
                 const price = course.finalPrice
                   ? (typeof course.finalPrice === 'number' ? `$${course.finalPrice}` : course.finalPrice)
                   : (course.coursePrice ? (typeof course.coursePrice === 'number' ? `$${course.coursePrice}` : String(course.coursePrice)) : undefined);
