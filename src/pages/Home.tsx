@@ -5,17 +5,24 @@ import { Footer } from "@/components/Footer";
 import { CourseCard } from "@/components/CourseCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Database, FlaskConical, LineChart, BookOpen, BrainCircuit } from "lucide-react";
+import { Database, Currency, LineChart, BookOpen, BrainCircuit } from "lucide-react";
 // import { coursesData } from "@/data/courses";
 import { apiService } from '../api/apiCalling';
 import { endpoints } from '../api/endpoints';
 
+// Import company logos
+import microsoftLogo from '@/assets/microsoft_logo.svg';
+import accentureLogo from '@/assets/accenture_logo.svg';
+import adobeLogo from '@/assets/adobe_logo.svg';
+import paypalLogo from '@/assets/paypal_logo.svg';
+import walmartLogo from '@/assets/walmart_logo.svg';
+
 const categories = [
   { icon: Database, label: "Data Science" },
-  { icon: FlaskConical, label: "Data Science" },
-  { icon: LineChart, label: "Data Science" },
-  { icon: BookOpen, label: "Data Science" },
-  { icon: BrainCircuit, label: "Data Science" }
+  { icon: Currency, label: "Finance" },
+  { icon: LineChart, label: "Data Analytics" },
+  { icon: BookOpen, label: "Business" },
+  { icon: BrainCircuit, label: "AI & ML" }
 ];
 
 // const courses = Array(5).fill(coursesData[0]);
@@ -79,25 +86,36 @@ const Home: React.FC = () => {
     try {
       // Backend GET /top-new-paid returns a list of Course objects (limit default 5)
       const data = await apiService.get<any>(endpoints.topNewPaid ?? '/api/courses/top-new-paid', { limit: 5 });
-      console.debug('fetchTopNewPaid response:', data);
+      console.debug('fetchTopNewPaid raw response:', data);
 
-      // Handle several possible response shapes from backend
+      let processedData;
       if (Array.isArray(data)) {
-        setTopNewCourses(data);
-      } else if (data && Array.isArray((data as any).courses)) {
-        setTopNewCourses((data as any).courses);
-      } else if (data && Array.isArray((data as any).data)) {
-        setTopNewCourses((data as any).data);
-      } else if (data && Array.isArray((data as any).topNewPaid)) {
-        setTopNewCourses((data as any).topNewPaid);
-      } else if (data && Array.isArray((data as any).result)) {
-        setTopNewCourses((data as any).result);
+        processedData = data;
+      } else if (data?.courses) {
+        processedData = data.courses;
+      } else if (data?.data) {
+        processedData = data.data;
+      } else if (data?.topNewPaid) {
+        processedData = data.topNewPaid;
+      } else if (data?.result) {
+        processedData = data.result;
       } else {
-        // Last resort: try to find any array value on the object
         const arrVal = Object.values(data || {}).find((v) => Array.isArray(v));
-        if (Array.isArray(arrVal)) setTopNewCourses(arrVal as any[]);
-        else setTopNewCourses([]);
+        processedData = Array.isArray(arrVal) ? arrVal : [];
       }
+
+      // Normalize the course data
+      const normalizedCourses = processedData.map((course: any) => ({
+        id: course.id || course._id || course.courseId,
+        title: course.title || course.courseTitle || course.name || 'Untitled Course',
+        imageUrl: course.imageUrl || course.image || '/placeholder.svg',
+        duration: course.duration || course.totalDuration || '0',
+        level: course.level || course.difficulty || 'All Levels',
+        finalPrice: course.finalPrice || course.price || course.coursePrice || 0
+      }));
+
+      console.debug('Normalized new courses:', normalizedCourses);
+      setTopNewCourses(normalizedCourses);
     } catch (err) {
       console.error('Failed to fetch top new paid courses', err);
       setTopNewCourses([]);
@@ -109,18 +127,45 @@ const Home: React.FC = () => {
   const fetchTopPopular = async () => {
     setTopPopularLoading(true);
     try {
+      console.log('Fetching popular courses...');
       const data = await apiService.get<any>(endpoints.mostPopular ?? '/api/courses/top-paid-popular', { limit: 5 });
-      console.debug('fetchTopPopular response:', data);
-      if (Array.isArray(data)) setTopPopularCourses(data);
-      else if (data && Array.isArray((data as any).courses)) setTopPopularCourses((data as any).courses);
-      else if (data && Array.isArray((data as any).data)) setTopPopularCourses((data as any).data);
-      else if (data && Array.isArray((data as any).mostPopular)) setTopPopularCourses((data as any).mostPopular);
-      else if (data && Array.isArray((data as any).result)) setTopPopularCourses((data as any).result);
-      else {
+      console.log('Popular courses raw response:', data);
+
+      let processedData;
+      if (Array.isArray(data)) {
+        processedData = data;
+      } else if (data?.courses) {
+        processedData = data.courses;
+      } else if (data?.data) {
+        processedData = data.data;
+      } else if (data?.mostPopular) {
+        processedData = data.mostPopular;
+      } else if (data?.result) {
+        processedData = data.result;
+      } else {
         const arrVal = Object.values(data || {}).find((v) => Array.isArray(v));
-        if (Array.isArray(arrVal)) setTopPopularCourses(arrVal as any[]);
-        else setTopPopularCourses([]);
+        processedData = Array.isArray(arrVal) ? arrVal : [];
       }
+
+      console.log('ProcessedData before normalization:', processedData);
+      
+      // Normalize the course data with detailed logging
+      const normalizedCourses = processedData.map((course: any) => {
+        console.log('Processing course:', course);
+        const normalized = {
+          id: course.id || course._id || course.courseId,
+          title: course.title || course.courseTitle || course.name || 'Untitled Course',
+          imageUrl: course.imageUrl || course.image || '/placeholder.svg',
+          duration: course.duration || course.totalDuration || '0',
+          level: course.level || course.difficulty || 'All Levels',
+          finalPrice: course.paid === false ? 0 : (course.finalPrice || course.price || 0)
+        };
+        console.log('Normalized course:', normalized);
+        return normalized;
+      });
+
+      console.log('Final normalized popular courses:', normalizedCourses);
+      setTopPopularCourses(normalizedCourses);
     } catch (err) {
       console.error('Failed to fetch top popular courses', err);
       setTopPopularCourses([]);
@@ -133,17 +178,41 @@ const Home: React.FC = () => {
     setTopFreeLoading(true);
     try {
       const data = await apiService.get<any>(endpoints.topNewFree ?? '/api/courses/top-free', { limit: 5 });
-      console.log("In top free .... 1")
-      console.debug('fetchTopFree response:', data);
-      if (Array.isArray(data)) setTopFreeCourses(data);
-      else if (data && Array.isArray((data as any).courses)) setTopFreeCourses((data as any).courses);
-      else if (data && Array.isArray((data as any).data)) setTopFreeCourses((data as any).data);
-      else if (data && Array.isArray((data as any).result)) setTopFreeCourses((data as any).result);
-      else {
+      console.debug('fetchTopFree raw response:', data);
+
+      let processedData;
+      if (Array.isArray(data)) {
+        processedData = data;
+      } else if (data?.courses) {
+        processedData = data.courses;
+      } else if (data?.data) {
+        processedData = data.data;
+      } else if (data?.result) {
+        processedData = data.result;
+      } else {
         const arrVal = Object.values(data || {}).find((v) => Array.isArray(v));
-        if (Array.isArray(arrVal)) setTopFreeCourses(arrVal as any[]);
-        else setTopFreeCourses([]);
+        processedData = Array.isArray(arrVal) ? arrVal : [];
       }
+
+      console.log('Free courses - ProcessedData before normalization:', processedData);
+      
+      // Normalize the course data with detailed logging
+      const normalizedCourses = processedData.map((course: any) => {
+        console.log('Processing free course:', course);
+        const normalized = {
+          id: course.id || course._id || course.courseId,
+          title: course.title || course.courseTitle || course.name || 'Untitled Course',
+          imageUrl: course.imageUrl || course.image || '/placeholder.svg',
+          duration: course.duration || course.totalDuration || '0',
+          level: course.level || course.difficulty || 'All Levels',
+          finalPrice: course.paid === false ? 0 : (course.finalPrice || course.price || 0)
+        };
+        console.log('Normalized free course:', normalized);
+        return normalized;
+      });
+
+      console.log('Final normalized free courses:', normalizedCourses);
+      setTopFreeCourses(normalizedCourses);
     } catch (err) {
       console.error('Failed to fetch top free courses', err);
       setTopFreeCourses([]);
@@ -176,15 +245,31 @@ const Home: React.FC = () => {
       {/* Trusted By Section */}
       <section className="py-8 border-b">
         <div className="container">
-          <p className="text-center text-sm text-muted-foreground mb-6">
+          <h2 className="text-center text-xl text-muted-foreground mb-6">
             Trusted by over 15,000 companies and millions of learners around the world
-          </p>
+          </h2>
+          {/* </p> */}
           <div className="flex flex-wrap justify-center items-center gap-8 opacity-60">
-            <span className="text-xl font-semibold">Microsoft</span>
-            <span className="text-xl font-semibold">Walmart</span>
-            <span className="text-xl font-semibold">accenture</span>
-            <span className="text-xl font-semibold">Adobe</span>
-            <span className="text-xl font-semibold">PayPal</span>
+            <div className="flex flex-col items-center gap-3">
+              <img src={microsoftLogo} alt="Microsoft Logo" className="h-auto w-auto" />
+              {/* <span className="text-l font-semibold">Microsoft</span> */}
+            </div>
+            <div className="flex flex-col items-center gap-3">
+              <img src={walmartLogo} alt="Walmart Logo" className="h-auto w-auto" />
+              {/* <span className="text-l font-semibold">Walmart</span> */}
+            </div>
+            <div className="flex flex-col items-center gap-3">
+              <img src={accentureLogo} alt="Accenture Logo" className="h-auto w-auto" />
+              {/* <span className="text-l font-semibold">accenture</span> */}
+            </div>
+            <div className="flex flex-col items-center gap-3">
+              <img src={adobeLogo} alt="Adobe Logo" className="h-auto w-auto" />
+              {/* <span className="text-l font-semibold">Adobe</span> */}
+            </div>
+            <div className="flex flex-col items-center gap-3">
+              <img src={paypalLogo} alt="PayPal Logo" className="h-auto w-auto" />
+              {/* <span className="text-l font-semibold">PayPal</span> */}
+            </div>
           </div>
         </div>
       </section>
@@ -227,26 +312,16 @@ const Home: React.FC = () => {
               ))
             ) : topNewCourses && topNewCourses.length > 0 ? (
               topNewCourses.map((course: any, idx: number) => {
-                const rawId = course.id || course._id || course.courseId || null;
-                const keyId = `${rawId ?? 'course'}-${idx}`;
-                const title = course.title || course.courseTitle || course.name || 'Untitled Course';
-                const image = course.image || course.imageUrl || '/placeholder.svg';
-                const duration = course.duration || course.totalDuration || '0 Hours';
-                const level = course.level || course.difficulty || 'All Levels';              
-                const price = course.finalPrice
-                  ? (typeof course.finalPrice === 'number' ? `$${course.finalPrice}` : course.finalPrice)
-                  : (course.coursePrice ? (typeof course.coursePrice === 'number' ? `$${course.coursePrice}` : String(course.coursePrice)) : undefined);
-
-                const idProp = rawId ?? String(idx);
-
+                const price = typeof course.finalPrice === 'number' ? `$${course.finalPrice}` : 
+                             course.finalPrice ? String(course.finalPrice) : 'Free';
                 return (
                   <CourseCard
-                    key={keyId}
-                    id={idProp}
-                    title={title}
-                    image={image}
-                    duration={duration}
-                    level={level}
+                    key={`new-${course.id || idx}`}
+                    id={course.id || String(idx)}
+                    title={course.title}
+                    image={course.imageUrl}
+                    duration={course.duration}
+                    level={course.level}
                     price={price}
                   />
                 );
@@ -273,28 +348,16 @@ const Home: React.FC = () => {
               ))
             ) : topPopularCourses && topPopularCourses.length > 0 ? (
               topPopularCourses.map((course: any, idx: number) => {
-                const rawId = course.id || course._id || course.courseId || null;
-                const keyId = `${rawId ?? 'course'}-${idx}`;
-                const title = course.title || course.courseTitle || course.name || 'Untitled Course';
-                const image = course.image || course.imageUrl || '/placeholder.svg';
-                const duration = course.duration || course.totalDuration || '0 Hours';
-                const level = course.level || course.difficulty || 'All Levels';
-                // const price = course.price
-                //   ? (typeof course.price === 'number' ? `$${course.price}` : course.price)
-                //   : (course.coursePrice ? (typeof course.coursePrice === 'number' ? `$${course.coursePrice}` : String(course.coursePrice)) : undefined);
-                const price = course.finalPrice
-                  ? (typeof course.finalPrice === 'number' ? `$${course.finalPrice}` : course.finalPrice)
-                  : (course.coursePrice ? (typeof course.coursePrice === 'number' ? `$${course.coursePrice}` : String(course.coursePrice)) : undefined);
-
-                  const idProp = rawId ?? String(idx);
+                const price = typeof course.finalPrice === 'number' ? `$${course.finalPrice}` : 
+                             course.finalPrice ? String(course.finalPrice) : 'Free';
                 return (
                   <CourseCard
-                    key={keyId}
-                    id={idProp}
-                    title={title}
-                    image={image}
-                    duration={duration}
-                    level={level}
+                    key={`popular-${course.id || idx}`}
+                    id={course.id || String(idx)}
+                    title={course.title}
+                    image={course.imageUrl}
+                    duration={course.duration}
+                    level={course.level}
                     price={price}
                   />
                 );
@@ -321,29 +384,15 @@ const Home: React.FC = () => {
               ))
             ) : topFreeCourses && topFreeCourses.length > 0 ? (
               topFreeCourses.map((course: any, idx: number) => {
-                const rawId = course.id || course._id || course.courseId || null;
-                const keyId = `${rawId ?? 'course'}-${idx}`;
-                const title = course.title || course.courseTitle || course.name || 'Untitled Course';
-                const image = course.image || course.imageUrl || '/placeholder.svg';
-                const duration = course.duration || course.totalDuration || '0 Hours';
-                const level = course.level || course.difficulty || 'All Levels';
-                // const price = course.price
-                //   ? (typeof course.price === 'number' ? `$${course.price}` : course.price)
-                //   : (course.coursePrice ? (typeof course.coursePrice === 'number' ? `$${course.coursePrice}` : String(course.coursePrice)) : undefined);
-                const price = course.finalPrice
-                  ? (typeof course.finalPrice === 'number' ? `$${course.finalPrice}` : course.finalPrice)
-                  : (course.coursePrice ? (typeof course.coursePrice === 'number' ? `$${course.coursePrice}` : String(course.coursePrice)) : undefined);
-
-                const idProp = rawId ?? String(idx);
                 return (
                   <CourseCard
-                    key={keyId}
-                    id={idProp}
-                    title={title}
-                    image={image}
-                    duration={duration}
-                    level={level}
-                    price={price}
+                    key={`free-${course.id || idx}`}
+                    id={course.id || String(idx)}
+                    title={course.title}
+                    image={course.imageUrl}
+                    duration={course.duration}
+                    level={course.level}
+                    price="Free"
                   />
                 );
               })
@@ -394,9 +443,9 @@ const Home: React.FC = () => {
             Learn anything, anytime, anywhere
           </h2>
           <p className="text-lg mb-8 max-w-2xl mx-auto opacity-90">
-            Incididunt sed fugiat cupidatat consectetur culpa ullam voluptate nulla exercitation duis ut culpa mollit magna consequat in quis minim.
+            Empowering minds to learn, grow, and succeed. Access world-class knowledge on your schedule - anytime, anywhere.
           </p>
-          <Button size="lg" variant="secondary">Join Now</Button>
+          <Button size="lg" variant="secondary"><Link to="/courses">Start Now</Link></Button>
         </div>
       </section>
 

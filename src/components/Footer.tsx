@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Facebook, Twitter, Instagram, Linkedin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import logo from '@/assets/logo12.png';
 
 export const Footer = () => {
   return (
@@ -11,13 +12,21 @@ export const Footer = () => {
           {/* Brand */}
           <div className="lg:col-span-1">
             <div className="flex items-center space-x-2 mb-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent">
-                <span className="text-lg font-bold text-accent-foreground">Q·AI</span>
-              </div>
-              <span className="text-sm font-semibold">EdTech</span>
+              <div className="items-left justify-left">
+                              <img 
+                                src={logo} 
+                                alt="Logo" 
+                                className="h-auto w-auto" 
+                                style={{
+                                  filter: 'contrast(1.1) brightness(1.05)',
+                                  objectFit: 'contain',
+                                  maxHeight: '56px'
+                                }}
+                              />
+                            </div>
             </div>
             <p className="text-sm text-primary-foreground/70">
-              Lorem ipsum is simply dummy text of the printing and typesetting industry. Lorem ipsum has been the industry's standard dummy text.
+              Master skills with our expert-curated courses, advance your career, and achieve your professional goals with flexible, accessible learning.
             </p>
           </div>
 
@@ -25,7 +34,7 @@ export const Footer = () => {
           <div>
             <h3 className="font-semibold mb-4">Company</h3>
             <ul className="space-y-2 text-sm text-primary-foreground/70">
-              <li><Link to="/" className="hover:text-accent transition-colors">Home</Link></li>
+              {/* <li><Link to="/" className="hover:text-accent transition-colors">Home</Link></li> */}
               <li><Link to="/" className="hover:text-accent transition-colors">About us</Link></li>
               <li><Link to="/" className="hover:text-accent transition-colors">Contact us</Link></li>
               <li><Link to="/" className="hover:text-accent transition-colors">Privacy policy</Link></li>
@@ -36,10 +45,10 @@ export const Footer = () => {
           <div>
             <h3 className="font-semibold mb-4">EdTech Schools</h3>
             <ul className="space-y-2 text-sm text-primary-foreground/70">
-              <li><Link to="/" className="hover:text-accent transition-colors">Home</Link></li>
-              <li><Link to="/" className="hover:text-accent transition-colors">About us</Link></li>
-              <li><Link to="/" className="hover:text-accent transition-colors">Contact us</Link></li>
-              <li><Link to="/" className="hover:text-accent transition-colors">Privacy policy</Link></li>
+              <li><Link to="/" className="hover:text-accent transition-colors">Data Science</Link></li>
+              <li><Link to="/" className="hover:text-accent transition-colors">Business</Link></li>
+              <li><Link to="/" className="hover:text-accent transition-colors">DevOps</Link></li>
+              <li><Link to="/" className="hover:text-accent transition-colors">Cloud Computing</Link></li>
             </ul>
           </div>
 
@@ -48,9 +57,9 @@ export const Footer = () => {
             <h3 className="font-semibold mb-4">Featured Programs</h3>
             <ul className="space-y-2 text-sm text-primary-foreground/70">
               <li><Link to="/" className="hover:text-accent transition-colors">Business Analytics</Link></li>
-              <li><Link to="/" className="hover:text-accent transition-colors">Business Analytics</Link></li>
-              <li><Link to="/" className="hover:text-accent transition-colors">Business Analytics</Link></li>
-              <li><Link to="/" className="hover:text-accent transition-colors">Business Analytics</Link></li>
+              <li><Link to="/" className="hover:text-accent transition-colors">Product Management</Link></li>
+              <li><Link to="/" className="hover:text-accent transition-colors">Python Programming</Link></li>
+              <li><Link to="/" className="hover:text-accent transition-colors">Web Development</Link></li>
             </ul>
           </div>
 

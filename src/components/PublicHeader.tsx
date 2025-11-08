@@ -7,6 +7,7 @@ import { AppContext } from "@/context/AppContext";
 import { Sidebar } from "@/components/Sidebar";
 import { NavDropdown } from "@/components/ui/navDropdown";
 import { SearchBar } from "@/components/ui/search-bar";
+import logo2 from '@/assets/logo12.png';
 
 export const PublicHeader = () => {
   const context = useContext(AppContext);
@@ -75,11 +76,19 @@ export const PublicHeader = () => {
           <button className="md:hidden p-2 rounded" onClick={() => setShowSidebar(true)} aria-label="open sidebar">
             <Menu className="h-5 w-5" />
           </button>
-          <Link to="/" className="flex items-center space-x-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
-              <span className="text-lg font-bold text-primary-foreground">Q·AI</span>
-            </div>
-            <span className="text-sm font-semibold">QUANTUM AI</span>
+          <Link to="/" className="justify-left items-left space-x-2">
+              <div className="items-left justify-left">
+                <img 
+                  src={logo2} 
+                  alt="Logo" 
+                  className="h-auto w-auto" 
+                  style={{
+                    filter: 'contrast(1.1) brightness(1.05)',
+                    objectFit: 'contain',
+                    maxHeight: '56px'
+                  }}
+                />
+              </div>
           </Link>
         </div>
 
@@ -111,7 +120,7 @@ export const PublicHeader = () => {
           <span className="transition-colors hover:text-accent cursor-pointer">Business</span>
           <span className="transition-colors hover:text-accent cursor-pointer">Government</span>
           <span className="transition-colors hover:text-accent cursor-pointer">Universities</span>
-          <span className="transition-colors hover:text-accent cursor-pointer">Resources</span>
+          {/* <span className="transition-colors hover:text-accent cursor-pointer">Resources</span> */}
         </nav>
 
         {/* Search and Auth */}
